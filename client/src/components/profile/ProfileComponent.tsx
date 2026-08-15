@@ -9,7 +9,7 @@ import type { UserProfile } from '@/types'
 export function ProfileComponent() {
   const { user } = useAuth()
   const { currentOrg } = useOrganization()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [_profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [fullName, setFullName] = useState('')
   const [saving, setSaving] = useState(false)

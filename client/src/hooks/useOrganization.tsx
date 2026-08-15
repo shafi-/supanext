@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, createContext, useContext } from 'react'
 import { organizationService } from '@/services/OrganizationService'
 import { memberService } from '@/services/MemberService'
 import type { OrganizationDetailView, Membership } from '@/types'
@@ -24,38 +24,38 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadOrganizations = async () => {
+  const loadOrganizations = useCallback(async () => {
     setLoading(true)
     setError(null)
     const { data, error: err } = await organizationService.getMyOrganizations()
     if (err) setError(err)
     if (data) setOrganizations(data as unknown as OrganizationDetailView[])
     setLoading(false)
-  }
+  }, [])
 
-  const loadMembership = async (orgId: string) => {
+  const loadMembership = useCallback(async (orgId: string) => {
     const { data } = await memberService.getMembership(orgId)
     if (data && data.length > 0) {
       setMembership(data[0])
     }
-  }
+  }, [])
 
-  const refreshOrg = async () => {
+  const refreshOrg = useCallback(async () => {
     if (currentOrg) {
       const { data } = await organizationService.getOrganization(currentOrg.id)
       if (data) setCurrentOrg(data)
     }
-  }
+  }, [currentOrg, setCurrentOrg])
 
   useEffect(() => {
     loadOrganizations()
-  }, [])
+  }, [loadOrganizations])
 
   useEffect(() => {
     if (currentOrg) {
       loadMembership(currentOrg.id)
     }
-  }, [currentOrg?.id])
+  }, [currentOrg, currentOrg?.id, loadMembership])
 
   return (
     <OrganizationContext.Provider

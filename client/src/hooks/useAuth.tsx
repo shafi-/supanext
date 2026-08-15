@@ -2,7 +2,7 @@
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { supabaseManager } from '@/lib/supabase'
-import type { AuthUser, AuthState } from '@/types'
+import type { AuthState } from '@/types'
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>

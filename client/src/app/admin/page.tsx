@@ -1,14 +1,12 @@
 'use client'
 
 import { AppLayout } from '@/components/layout/AppLayout'
-import { useAuth } from '@/hooks/useAuth'
 import { adminService } from '@/services/AdminService'
 import { useState, useEffect } from 'react'
 import type { SystemStats } from '@/types'
 import Link from 'next/link'
 
 export default function AdminPage() {
-  const { user } = useAuth()
   const [stats, setStats] = useState<SystemStats | null>(null)
   const [loading, setLoading] = useState(true)
 
