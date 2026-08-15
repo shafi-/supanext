@@ -10,7 +10,9 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 
 ### Frontend Architecture
 - **Static Export**: Frontend uses `output: 'export'` - no server components, everything must be client-side
-- **Layered Structure**: Pages → Containers → Services → Repositories → Supabase Client Manager
+- **No Dynamic Routes**: Static export cannot use `[param]` path segments. Use query params instead: `/orgs?id=xxx` not `/orgs/xxx`
+- **Query Param Validation**: Use `useRequiredParam(key)` hook + `isUuid()` / `isInviteToken()` validators for safe param extraction
+- **Layered Structure**: Pages → Services → Repositories → Supabase Client Manager
 - **Container Pattern**: Containers manage state, communicate with services, and compose UI from components
 - **Component Contract**: Components are stateless and never make API calls directly
 
@@ -21,6 +23,7 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 - **Edge Functions**: Cloudflare/Supabase edge functions for auth operations (sign-up, sign-in, password reset)
 - **Service Layer**: Business logic in `/backend` directory, imported by edge functions
 - **Repository Pattern**: BaseRepository with CRUD, extended by feature-specific repositories
+- **RPC Type Safety**: `Rpc` const in `types/rpc.ts` uses `satisfies DbFunction` to validate function names against `database.ts` at compile time. Services use nested `Rpc.Group.Action` pattern (e.g., `Rpc.Todo.Create`).
 
 ### Database Architecture Philosophy
 The project treats PostgreSQL as an application backend, not just data storage:
