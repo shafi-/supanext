@@ -1,0 +1,91 @@
+'use client'
+
+import Link from 'next/link'
+import { useAuth } from '@/hooks/useAuth'
+import { useOrganization } from '@/hooks/useOrganization'
+import { useState } from 'react'
+
+export function Nav() {
+  const { user, signOut } = useAuth()
+  const { currentOrg } = useOrganization()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  return (
+    <nav className="border-b bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="font-bold text-xl">
+              SupaNext
+            </Link>
+            {user && (
+              <div className="hidden md:flex gap-4">
+                <Link href="/orgs" className="text-gray-600 hover:text-gray-900">
+                  Organizations
+                </Link>
+                {currentOrg && (
+                  <>
+                    <Link href={`/orgs/${currentOrg.id}/todos`} className="text-gray-600 hover:text-gray-900">
+                      Todos
+                    </Link>
+                    <Link href={`/orgs/${currentOrg.id}/members`} className="text-gray-600 hover:text-gray-900">
+                      Members
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            {user ? (
+              <>
+                <Link href="/profile" className="text-gray-600 hover:text-gray-900">
+                  {user.email}
+                </Link>
+                <button
+                  onClick={() => signOut()}
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <Link href="/auth/login" className="text-gray-600 hover:text-gray-900">
+                Sign in
+              </Link>
+            )}
+            <button
+              className="md:hidden"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              Menu
+            </button>
+          </div>
+        </div>
+      </div>
+      {mobileOpen && (
+        <div className="md:hidden border-t">
+          <div className="px-4 py-2 space-y-2">
+            {user && (
+              <>
+                <Link href="/orgs" className="block py-2" onClick={() => setMobileOpen(false)}>
+                  Organizations
+                </Link>
+                {currentOrg && (
+                  <>
+                    <Link href={`/orgs/${currentOrg.id}/todos`} className="block py-2" onClick={() => setMobileOpen(false)}>
+                      Todos
+                    </Link>
+                    <Link href={`/orgs/${currentOrg.id}/members`} className="block py-2" onClick={() => setMobileOpen(false)}>
+                      Members
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </nav>
+  )
+}
