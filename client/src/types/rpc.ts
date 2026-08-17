@@ -47,6 +47,20 @@ export const Rpc = {
     GetAllOrgs: 'get_all_organizations' satisfies DbFunction,
     IsSystemAdmin: 'is_system_admin' satisfies DbFunction,
   },
+  Subscription: {
+    GetPlans: 'get_subscription_plans' satisfies DbFunction,
+    CreatePlan: 'create_subscription_plan' satisfies DbFunction,
+    UpdatePlan: 'update_subscription_plan' satisfies DbFunction,
+    GetOrgSubscriptions: 'get_organization_subscriptions' satisfies DbFunction,
+    GetHistory: 'get_subscription_history' satisfies DbFunction,
+    Pause: 'pause_subscription' satisfies DbFunction,
+    Unpause: 'unpause_subscription' satisfies DbFunction,
+    Subscribe: 'subscribe_to_plan' satisfies DbFunction,
+    ChangePlan: 'change_plan' satisfies DbFunction,
+    Cancel: 'cancel_subscription' satisfies DbFunction,
+    GetMy: 'get_my_subscription' satisfies DbFunction,
+    HasFeature: 'has_feature' satisfies DbFunction,
+  },
 } as const
 
 export type RpcFunction =
@@ -56,3 +70,4 @@ export type RpcFunction =
   | (typeof Rpc.Todo)[keyof typeof Rpc.Todo]
   | (typeof Rpc.Invite)[keyof typeof Rpc.Invite]
   | (typeof Rpc.Admin)[keyof typeof Rpc.Admin]
+  | (typeof Rpc.Subscription)[keyof typeof Rpc.Subscription]

@@ -267,6 +267,71 @@ export type Database = {
           },
         ]
       }
+      organization_subscriptions: {
+        Row: {
+          billing_period: string
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          organization_id: string
+          plan_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          billing_period?: string
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          organization_id: string
+          plan_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          billing_period?: string
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          organization_id?: string
+          plan_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_subscriptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_detail_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_subscriptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_subscriptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string | null
@@ -357,6 +422,107 @@ export type Database = {
           is_system_role?: boolean | null
           name?: string
           permissions?: string[] | null
+        }
+        Relationships: []
+      }
+      subscription_history: {
+        Row: {
+          action: string
+          amount: number | null
+          created_at: string | null
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          organization_id: string
+          payment_status: string | null
+          plan_id: string
+        }
+        Insert: {
+          action: string
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          organization_id: string
+          payment_status?: string | null
+          plan_id: string
+        }
+        Update: {
+          action?: string
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          organization_id?: string
+          payment_status?: string | null
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_detail_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_monthly: number | null
+          price_yearly: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -625,6 +791,31 @@ export type Database = {
         Returns: string
       }
       bootstrap_system_admin: { Args: never; Returns: boolean }
+      cancel_subscription: { Args: { p_org_id: string }; Returns: boolean }
+      change_plan: {
+        Args: {
+          p_billing_period: string
+          p_new_plan_id: string
+          p_org_id: string
+        }
+        Returns: {
+          billing_period: string
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          organization_id: string
+          plan_id: string
+          status: string
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "organization_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_invite: {
         Args: { p_email: string; p_organization_id: string; p_role?: string }
         Returns: {
@@ -671,6 +862,32 @@ export type Database = {
           to: "organization_view"
           isOneToOne: false
           isSetofReturn: true
+        }
+      }
+      create_subscription_plan: {
+        Args: {
+          p_description: string
+          p_features: Json
+          p_name: string
+          p_price_monthly: number
+          p_price_yearly: number
+        }
+        Returns: {
+          created_at: string | null
+          description: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_monthly: number | null
+          price_yearly: number | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscription_plans"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       create_test_user: {
@@ -796,6 +1013,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_my_subscription: {
+        Args: { p_org_id: string }
+        Returns: {
+          billing_period: string
+          current_period_end: string
+          current_period_start: string
+          description: string
+          features: Json
+          id: string
+          plan_id: string
+          plan_name: string
+          price_monthly: number
+          price_yearly: number
+          status: string
+        }[]
+      }
       get_organization: {
         Args: { target_org_id: string }
         Returns: {
@@ -833,6 +1066,57 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "member_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_organization_subscriptions: {
+        Args: never
+        Returns: {
+          billing_period: string
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          id: string
+          org_name: string
+          organization_id: string
+          plan_name: string
+          price_monthly: number
+          price_yearly: number
+          status: string
+        }[]
+      }
+      get_subscription_history: {
+        Args: { p_org_id: string }
+        Returns: {
+          action: string
+          amount: number
+          created_at: string
+          id: string
+          invoice_number: string
+          notes: string
+          org_name: string
+          organization_id: string
+          payment_status: string
+          plan_name: string
+        }[]
+      }
+      get_subscription_plans: {
+        Args: never
+        Returns: {
+          created_at: string | null
+          description: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_monthly: number | null
+          price_yearly: number | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "subscription_plans"
           isOneToOne: false
           isSetofReturn: true
         }
@@ -906,6 +1190,10 @@ export type Database = {
         Returns: string
       }
       grant_system_admin: { Args: { target_user_id: string }; Returns: boolean }
+      has_feature: {
+        Args: { p_feature: string; p_org_id: string }
+        Returns: boolean
+      }
       is_admin_or_owner: {
         Args: { check_org_id: string; check_user_id: string }
         Returns: boolean
@@ -915,6 +1203,7 @@ export type Database = {
         Returns: boolean
       }
       is_system_admin: { Args: { check_user_id: string }; Returns: boolean }
+      pause_subscription: { Args: { p_org_id: string }; Returns: boolean }
       remove_organization_member: {
         Args: { target_org_id: string; target_user_id: string }
         Returns: boolean
@@ -925,6 +1214,28 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      set_system_admin: { Args: { p_user_id: string }; Returns: boolean }
+      subscribe_to_plan: {
+        Args: { p_billing_period: string; p_org_id: string; p_plan_id: string }
+        Returns: {
+          billing_period: string
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          organization_id: string
+          plan_id: string
+          status: string
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "organization_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      unpause_subscription: { Args: { p_org_id: string }; Returns: boolean }
       update_member_role: {
         Args: {
           new_role: string
@@ -999,6 +1310,34 @@ export type Database = {
           to: "organization_view"
           isOneToOne: false
           isSetofReturn: true
+        }
+      }
+      update_subscription_plan: {
+        Args: {
+          p_description: string
+          p_features: Json
+          p_is_active: boolean
+          p_name: string
+          p_plan_id: string
+          p_price_monthly: number
+          p_price_yearly: number
+        }
+        Returns: {
+          created_at: string | null
+          description: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_monthly: number | null
+          price_yearly: number | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscription_plans"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       update_todo: {

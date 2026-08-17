@@ -741,6 +741,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- CLI/Script helper: set any user as system admin (no auth check, SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION set_system_admin(p_user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  UPDATE profiles SET is_system_admin = true WHERE id = p_user_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'User not found'; END IF;
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 -- ====================================================================
 -- AUTH HANDLER
 -- ====================================================================
@@ -854,6 +864,7 @@ GRANT EXECUTE ON FUNCTION grant_system_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION revoke_system_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_system_admins() TO authenticated;
 GRANT EXECUTE ON FUNCTION bootstrap_system_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION set_system_admin(UUID) TO authenticated;
 
 -- ====================================================================
 -- DEV HELPER FUNCTIONS (Optional)

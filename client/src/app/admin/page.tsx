@@ -68,6 +68,12 @@ export default function AdminPage() {
         <Link href="/admin/orgs" className="text-blue-600 hover:underline">
           Manage Organizations
         </Link>
+        <Link href="/admin/plans" className="text-blue-600 hover:underline block">
+          Subscription Plans
+        </Link>
+        <Link href="/admin/subscriptions" className="text-blue-600 hover:underline block">
+          Organization Subscriptions
+        </Link>
       </div>
     </AppLayout>
   )

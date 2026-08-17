@@ -5,6 +5,7 @@ import { useRequireAuth } from '@/hooks/useAuth'
 import { useOrganization } from '@/hooks/useOrganization'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useRequiredParam, isUuid } from '@/hooks/useQueryParam'
+import { useSubscription } from '@/hooks/useSubscription'
 import { organizationService } from '@/services/OrganizationService'
 import { todoService } from '@/services/TodoService'
 import { memberService } from '@/services/MemberService'
@@ -12,6 +13,7 @@ import { inviteService } from '@/services/InviteService'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import type { Todo, MemberView, Invite } from '@/types'
+import { BillingTab } from '@/components/subscription/BillingTab'
 
 export default function OrgsPage() {
   useRequireAuth()
@@ -69,23 +71,32 @@ function OrgList() {
 
 function OrgDetail({ orgId }: { orgId: string }) {
   const { currentOrg } = useOrganization()
-  const { isOrgAdmin } = usePermissions()
-  const [tab, setTab] = useState<'todos' | 'members' | 'settings'>('todos')
+  const { isOrgAdmin, isOrgOwner } = usePermissions()
+  const { hasFeature } = useSubscription(orgId)
+  const [tab, setTab] = useState<'todos' | 'members' | 'settings' | 'billing'>('todos')
   if (!currentOrg) return null
   return (
     <>
       <h1 className="text-2xl font-bold">{currentOrg.name}</h1>
       <p className="text-gray-600">{currentOrg.description ?? 'No description'}</p>
       <div className="flex gap-4 border-b mb-4">
-        <button onClick={() => setTab('todos')} className={`pb-2 ${tab === 'todos' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Todos</button>
-        <button onClick={() => setTab('members')} className={`pb-2 ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Members</button>
-        {isOrgAdmin() && (
+        {hasFeature('todos') && (
+          <button onClick={() => setTab('todos')} className={`pb-2 ${tab === 'todos' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Todos</button>
+        )}
+        {hasFeature('members') && (
+          <button onClick={() => setTab('members')} className={`pb-2 ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Members</button>
+        )}
+        {hasFeature('settings') && isOrgAdmin() && (
           <button onClick={() => setTab('settings')} className={`pb-2 ${tab === 'settings' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Settings</button>
         )}
+        {isOrgOwner() && (
+          <button onClick={() => setTab('billing')} className={`pb-2 ${tab === 'billing' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Billing</button>
+        )}
       </div>
-      {tab === 'todos' && <TodosTab orgId={orgId} />}
-      {tab === 'members' && <MembersTab orgId={orgId} />}
-      {tab === 'settings' && <SettingsTab orgId={orgId} />}
+      {tab === 'todos' && hasFeature('todos') && <TodosTab orgId={orgId} />}
+      {tab === 'members' && hasFeature('members') && <MembersTab orgId={orgId} />}
+      {tab === 'settings' && hasFeature('settings') && <SettingsTab orgId={orgId} />}
+      {tab === 'billing' && isOrgOwner() && <BillingTab orgId={orgId} isOwner={isOrgOwner()} />}
     </>
   )
 }
