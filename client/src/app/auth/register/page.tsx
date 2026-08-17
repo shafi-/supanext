@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function RegisterPage() {
   const { signUp } = useAuth()
+  const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,8 +36,12 @@ export default function RegisterPage() {
 
     try {
       setLoading(true)
-      await signUp(email, password, fullName || undefined)
-      // Navigation is handled by the signUp function
+      const { error } = await signUp(email, password, fullName || undefined)
+      if (error) {
+        setError(error)
+      } else {
+        router.push('/dashboard')
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to create account')
     } finally {

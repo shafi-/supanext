@@ -1,14 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useOrganization } from '@/hooks/useOrganization'
+import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useState } from 'react'
 
 export function Nav() {
   const { user, signOut } = useAuth()
   const { currentOrg } = useOrganization()
+  const { isSystemAdmin } = useSystemAdmin()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const router = useRouter()
 
   return (
     <nav className="border-b bg-white">
@@ -26,6 +30,9 @@ export function Nav() {
                     <Link href={`/orgs?id=${currentOrg.id}`} className="text-gray-600 hover:text-gray-900">Members</Link>
                   </>
                 )}
+                {isSystemAdmin && (
+                  <Link href="/admin" className="text-gray-600 hover:text-gray-900">Admin</Link>
+                )}
               </div>
             )}
           </div>
@@ -33,7 +40,7 @@ export function Nav() {
             {user ? (
               <>
                 <Link href="/profile" className="text-gray-600 hover:text-gray-900">{user.email}</Link>
-                <button onClick={() => signOut()} className="text-gray-600 hover:text-gray-900">Sign out</button>
+                <button onClick={() => signOut().then(() => router.push('/auth/login/'))} className="text-gray-600 hover:text-gray-900">Sign out</button>
               </>
             ) : (
               <Link href="/auth/login" className="text-gray-600 hover:text-gray-900">Sign in</Link>
@@ -50,6 +57,9 @@ export function Nav() {
                 <Link href="/orgs" className="block py-2" onClick={() => setMobileOpen(false)}>Organizations</Link>
                 {currentOrg && (
                   <Link href={`/orgs?id=${currentOrg.id}`} className="block py-2" onClick={() => setMobileOpen(false)}>Dashboard</Link>
+                )}
+                {isSystemAdmin && (
+                  <Link href="/admin" className="block py-2" onClick={() => setMobileOpen(false)}>Admin</Link>
                 )}
               </>
             )}

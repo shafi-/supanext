@@ -27,12 +27,6 @@ export class OrganizationService extends BaseRepository {
     })
   }
 
-  async getOrgStats(orgId: string): ServiceData<{ member_count: number; todo_count: number; completed_todos: number }> {
-    return this.callRpc<{ member_count: number; todo_count: number; completed_todos: number }>(Rpc.Org.GetStats, {
-      p_org_id: orgId,
-    })
-  }
-
   async updateOrganization(
     orgId: string,
     data: { name?: string; slug?: string; description?: string; settings?: Record<string, unknown> }

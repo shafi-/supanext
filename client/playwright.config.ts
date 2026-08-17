@@ -37,8 +37,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'pnpm run build && pnpm run start',
+    command: 'npx -y serve@latest out -l 3000 -s',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
+    timeout: 120000,
   },
 })

@@ -1,6 +1,3 @@
-// Auto-generated from Supabase schema
-// Run: supabase gen types typescript > src/types/database.ts
-
 export type Json =
   | string
   | number
@@ -9,399 +6,1168 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      profiles: {
+      audit_logs: {
         Row: {
+          action: string
+          created_at: string | null
           id: string
-          email: string
-          full_name: string | null
-          avatar_url: string | null
-          metadata: Json
-          is_system_admin: boolean
-          created_at: string
-          updated_at: string
+          ip_address: string | null
+          metadata: Json | null
+          organization_id: string | null
+          resource_id: string | null
+          resource_type: string | null
+          user_agent: string | null
+          user_id: string | null
         }
         Insert: {
-          id: string
-          email: string
-          full_name?: string | null
-          avatar_url?: string | null
-          metadata?: Json
-          is_system_admin?: boolean
-          created_at?: string
-          updated_at?: string
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          organization_id?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Update: {
+          action?: string
+          created_at?: string | null
           id?: string
-          email?: string
-          full_name?: string | null
-          avatar_url?: string | null
-          metadata?: Json
-          is_system_admin?: boolean
-          updated_at?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          organization_id?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
-      }
-      organizations: {
-        Row: {
-          id: string
-          name: string
-          slug: string
-          logo_url: string | null
-          description: string | null
-          settings: Json
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          slug: string
-          logo_url?: string | null
-          description?: string | null
-          settings?: Json
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          slug?: string
-          logo_url?: string | null
-          description?: string | null
-          settings?: Json
-          updated_at?: string
-        }
-      }
-      organization_members: {
-        Row: {
-          id: string
-          organization_id: string
-          user_id: string
-          role: string
-          status: string
-          invited_by: string | null
-          joined_at: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          user_id: string
-          role?: string
-          status?: string
-          invited_by?: string | null
-          joined_at?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          user_id?: string
-          role?: string
-          status?: string
-          invited_by?: string | null
-          joined_at?: string
-          updated_at?: string
-        }
-      }
-      roles: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          permissions: string[]
-          is_system_role: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          permissions?: string[]
-          is_system_role?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          permissions?: string[]
-          is_system_role?: boolean
-        }
-      }
-      todos: {
-        Row: {
-          id: string
-          organization_id: string
-          title: string
-          description: string | null
-          completed: boolean
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          title: string
-          description?: string | null
-          completed?: boolean
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          title?: string
-          description?: string | null
-          completed?: boolean
-          updated_at?: string
-        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_detail_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invites: {
         Row: {
-          id: string
-          organization_id: string
-          email: string
-          token: string
-          role: string | null
-          invited_by: string | null
-          expires_at: string
           accepted_at: string | null
-          created_at: string
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by: string | null
+          organization_id: string
+          role: string | null
+          token: string
         }
         Insert: {
-          id?: string
-          organization_id: string
-          email: string
-          token?: string
-          role?: string | null
-          invited_by?: string | null
-          expires_at?: string
           accepted_at?: string | null
-          created_at?: string
+          created_at?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          organization_id: string
+          role?: string | null
+          token?: string
         }
         Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          organization_id?: string
+          role?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_detail_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          invited_by: string | null
+          joined_at: string | null
+          organization_id: string | null
+          role: string
+          status: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          organization_id?: string | null
+          role?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          organization_id?: string | null
+          role?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_detail_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          settings: Json | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          settings?: Json | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          settings?: Json | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          is_system_admin: boolean | null
+          metadata: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          is_system_admin?: boolean | null
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_system_admin?: boolean | null
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system_role: boolean | null
+          name: string
+          permissions: string[] | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system_role?: boolean | null
+          name: string
+          permissions?: string[] | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system_role?: boolean | null
+          name?: string
+          permissions?: string[] | null
+        }
+        Relationships: []
+      }
+      todos: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          organization_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          organization_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
           id?: string
           organization_id?: string
-          email?: string
-          token?: string
-          role?: string | null
-          invited_by?: string | null
-          expires_at?: string
-          accepted_at?: string | null
+          title?: string
+          updated_at?: string | null
         }
-      }
-      audit_logs: {
-        Row: {
-          id: string
-          user_id: string | null
-          organization_id: string | null
-          action: string
-          resource_type: string | null
-          resource_id: string | null
-          metadata: Json
-          ip_address: string | null
-          user_agent: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id?: string | null
-          organization_id?: string | null
-          action: string
-          resource_type?: string | null
-          resource_id?: string | null
-          metadata?: Json
-          ip_address?: string | null
-          user_agent?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string | null
-          organization_id?: string | null
-          action?: string
-          resource_type?: string | null
-          resource_id?: string | null
-          metadata?: Json
-          ip_address?: string | null
-          user_agent?: string | null
-        }
+        Relationships: [
+          {
+            foreignKeyName: "todos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_detail_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
-      profile_view: {
+      member_view: {
         Row: {
-          id: string
-          email: string
-          full_name: string | null
           avatar_url: string | null
-          metadata: Json
-          created_at: string
-          updated_at: string
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          joined_at: string | null
+          organization_id: string | null
+          role: string | null
+          status: string | null
+          user_id: string | null
         }
-      }
-      organization_view: {
-        Row: {
-          id: string
-          name: string
-          slug: string
-          logo_url: string | null
-          description: string | null
-          settings: Json
-          created_at: string
-          updated_at: string
-          user_id: string
-          user_role: string
-          membership_status: string
-          joined_at: string
-        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_detail_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organization_detail_view: {
         Row: {
-          id: string
-          name: string
-          slug: string
-          logo_url: string | null
+          created_at: string | null
           description: string | null
-          settings: Json
-          created_at: string
-          updated_at: string
-          member_count: number
+          id: string | null
+          logo_url: string | null
+          member_count: number | null
+          name: string | null
+          settings: Json | null
+          slug: string | null
+          updated_at: string | null
         }
+        Relationships: []
       }
-      member_view: {
+      organization_view: {
         Row: {
-          id: string
-          organization_id: string
-          user_id: string
-          email: string
-          full_name: string | null
-          avatar_url: string | null
-          role: string
-          status: string
-          joined_at: string
-          created_at: string
+          created_at: string | null
+          description: string | null
+          id: string | null
+          joined_at: string | null
+          logo_url: string | null
+          membership_status: string | null
+          name: string | null
+          settings: Json | null
+          slug: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_role: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_view: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          metadata: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          metadata?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      role_view: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          is_system_role: boolean | null
+          name: string | null
+          permissions: string[] | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_system_role?: boolean | null
+          name?: string | null
+          permissions?: string[] | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          is_system_role?: boolean | null
+          name?: string | null
+          permissions?: string[] | null
+        }
+        Relationships: []
       }
     }
     Functions: {
-      get_my_profile: {
-        Args: Record<string, never>
-        Returns: Database['public']['Views']['profile_view']['Row'][]
+      accept_invite: { Args: { p_token: string }; Returns: boolean }
+      add_organization_member: {
+        Args: {
+          member_role?: string
+          target_org_id: string
+          target_user_email: string
+        }
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          joined_at: string | null
+          organization_id: string | null
+          role: string | null
+          status: string | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "member_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      get_user_profile: {
-        Args: { target_user_id: string }
-        Returns: Database['public']['Views']['profile_view']['Row'][]
+      audit_action: {
+        Args: {
+          action_name: string
+          audit_metadata?: Json
+          audit_org_id: string
+          audit_user_id: string
+          p_resource_id?: string
+          p_resource_type?: string
+        }
+        Returns: string
       }
-      update_my_profile: {
-        Args: { new_full_name?: string; new_avatar_url?: string; new_metadata?: Json }
-        Returns: Database['public']['Views']['profile_view']['Row'][]
+      bootstrap_system_admin: { Args: never; Returns: boolean }
+      create_invite: {
+        Args: { p_email: string; p_organization_id: string; p_role?: string }
+        Returns: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by: string | null
+          organization_id: string
+          role: string | null
+          token: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "invites"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       create_organization: {
-        Args: { org_name: string; org_slug: string; org_description?: string; org_settings?: Json }
-        Returns: Database['public']['Views']['organization_view']['Row'][]
+        Args: {
+          org_description?: string
+          org_name: string
+          org_settings?: Json
+          org_slug: string
+        }
+        Returns: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          joined_at: string | null
+          logo_url: string | null
+          membership_status: string | null
+          name: string | null
+          settings: Json | null
+          slug: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_role: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "organization_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      create_test_user: {
+        Args: {
+          test_email: string
+          test_full_name?: string
+          test_org_name?: string
+        }
+        Returns: string
+      }
+      create_todo: {
+        Args: {
+          p_description?: string
+          p_organization_id: string
+          p_title: string
+        }
+        Returns: {
+          completed: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          organization_id: string
+          title: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "todos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      delete_organization: { Args: { target_org_id: string }; Returns: boolean }
+      delete_todo: { Args: { p_todo_id: string }; Returns: boolean }
+      get_all_organizations: {
+        Args: never
+        Returns: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          logo_url: string | null
+          member_count: number | null
+          name: string | null
+          settings: Json | null
+          slug: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "organization_detail_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_invites: {
+        Args: { p_organization_id: string }
+        Returns: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by: string | null
+          organization_id: string
+          role: string | null
+          token: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "invites"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_membership: {
+        Args: { p_org_id: string }
+        Returns: {
+          is_active: boolean
+          permissions: string[]
+          role: string
+        }[]
       }
       get_my_organizations: {
-        Args: Record<string, never>
-        Returns: Database['public']['Views']['organization_view']['Row'][]
+        Args: never
+        Returns: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          joined_at: string | null
+          logo_url: string | null
+          membership_status: string | null
+          name: string | null
+          settings: Json | null
+          slug: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_role: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "organization_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_my_profile: {
+        Args: never
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          is_system_admin: boolean | null
+          metadata: Json | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_organization: {
         Args: { target_org_id: string }
-        Returns: Database['public']['Views']['organization_detail_view']['Row'][]
+        Returns: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          logo_url: string | null
+          member_count: number | null
+          name: string | null
+          settings: Json | null
+          slug: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "organization_detail_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      update_organization: {
-        Args: { target_org_id: string; new_name?: string; new_slug?: string; new_description?: string; new_settings?: Json }
-        Returns: Database['public']['Views']['organization_view']['Row'][]
-      }
-      delete_organization: {
+      get_organization_members: {
         Args: { target_org_id: string }
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          joined_at: string | null
+          organization_id: string | null
+          role: string | null
+          status: string | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "member_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_system_admins: {
+        Args: never
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          metadata: Json | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profile_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_system_stats: {
+        Args: never
+        Returns: {
+          recent_signups: number
+          total_members: number
+          total_orgs: number
+          total_users: number
+        }[]
+      }
+      get_todos: {
+        Args: { p_organization_id: string }
+        Returns: {
+          completed: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          organization_id: string
+          title: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "todos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_user_profile: {
+        Args: { target_user_id: string }
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          metadata: Json | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profile_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_user_role: {
+        Args: { check_org_id: string; check_user_id: string }
+        Returns: string
+      }
+      grant_system_admin: { Args: { target_user_id: string }; Returns: boolean }
+      is_admin_or_owner: {
+        Args: { check_org_id: string; check_user_id: string }
         Returns: boolean
       }
-      add_organization_member: {
-        Args: { target_org_id: string; target_user_email: string; member_role?: string }
-        Returns: Database['public']['Views']['member_view']['Row'][]
+      is_member: {
+        Args: { check_org_id: string; check_user_id: string }
+        Returns: boolean
       }
+      is_system_admin: { Args: { check_user_id: string }; Returns: boolean }
       remove_organization_member: {
         Args: { target_org_id: string; target_user_id: string }
         Returns: boolean
       }
-      get_organization_members: {
-        Args: { target_org_id: string }
-        Returns: Database['public']['Views']['member_view']['Row'][]
-      }
-      update_member_role: {
-        Args: { target_org_id: string; target_user_id: string; new_role: string }
-        Returns: Database['public']['Views']['member_view']['Row'][]
-      }
-      get_membership: {
-        Args: { p_org_id: string }
-        Returns: { role: string; permissions: string[]; is_active: boolean }[]
-      }
-      get_org_stats: {
-        Args: { p_org_id: string }
-        Returns: { member_count: number; todo_count: number; completed_todos: number }[]
-      }
-      create_todo: {
-        Args: { p_organization_id: string; p_title: string; p_description?: string }
-        Returns: Database['public']['Tables']['todos']['Row'][]
-      }
-      get_todos: {
-        Args: { p_organization_id: string }
-        Returns: Database['public']['Tables']['todos']['Row'][]
-      }
-      update_todo: {
-        Args: { p_todo_id: string; p_title?: string; p_description?: string; p_completed?: boolean }
-        Returns: Database['public']['Tables']['todos']['Row'][]
-      }
-      delete_todo: {
-        Args: { p_todo_id: string }
+      reset_development_data: { Args: never; Returns: undefined }
+      revoke_invite: { Args: { p_invite_id: string }; Returns: boolean }
+      revoke_system_admin: {
+        Args: { target_user_id: string }
         Returns: boolean
       }
-      create_invite: {
-        Args: { p_organization_id: string; p_email: string; p_role?: string }
-        Returns: Database['public']['Tables']['invites']['Row'][]
+      update_member_role: {
+        Args: {
+          new_role: string
+          target_org_id: string
+          target_user_id: string
+        }
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          joined_at: string | null
+          organization_id: string | null
+          role: string | null
+          status: string | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "member_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      get_invites: {
-        Args: { p_organization_id: string }
-        Returns: Database['public']['Tables']['invites']['Row'][]
+      update_my_profile: {
+        Args: {
+          new_avatar_url?: string
+          new_full_name?: string
+          new_metadata?: Json
+        }
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          metadata: Json | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profile_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      update_organization: {
+        Args: {
+          new_description?: string
+          new_name?: string
+          new_settings?: Json
+          new_slug?: string
+          target_org_id: string
+        }
+        Returns: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          joined_at: string | null
+          logo_url: string | null
+          membership_status: string | null
+          name: string | null
+          settings: Json | null
+          slug: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_role: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "organization_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      update_todo: {
+        Args: {
+          p_completed?: boolean
+          p_description?: string
+          p_title?: string
+          p_todo_id: string
+        }
+        Returns: {
+          completed: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          organization_id: string
+          title: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "todos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       validate_invite: {
         Args: { p_token: string }
-        Returns: { invite_id: string; org_id: string; org_name: string; invite_email: string; invite_role: string }[]
-      }
-      accept_invite: {
-        Args: { p_token: string }
-        Returns: boolean
-      }
-      get_system_stats: {
-        Args: Record<string, never>
-        Returns: { total_orgs: number; total_users: number; total_members: number; recent_signups: number }[]
-      }
-      get_all_organizations: {
-        Args: Record<string, never>
-        Returns: Database['public']['Views']['organization_detail_view']['Row'][]
-      }
-      update_jwt_claims: {
-        Args: Record<string, never>
-        Returns: boolean
+        Returns: {
+          invite_email: string
+          invite_id: string
+          invite_role: string
+          org_id: string
+          org_name: string
+        }[]
       }
     }
     Enums: {
-      _: never
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
 
-// Helper types for common patterns
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
-export type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
-export type TablesUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Views<T extends keyof Database['public']['Views']> = Database['public']['Views'][T]['Row']
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {},
+  },
+} as const
+

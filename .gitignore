@@ -37,6 +37,11 @@ tsconfig.tsbuildinfo
 
 # Testing
 coverage/
+client/playwright-report
+
+# Temp
+.temp/
 
 # Misc
 *.log
+client/test-results

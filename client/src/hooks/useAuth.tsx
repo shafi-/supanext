@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabaseManager } from '@/lib/supabase'
 import type { AuthState } from '@/types'
 
@@ -80,8 +81,13 @@ export function useAuth() {
 
 export function useRequireAuth() {
   const auth = useAuth()
-  if (!auth.loading && !auth.user) {
-    window.location.href = '/auth/login'
-  }
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!auth.loading && !auth.user) {
+      router.push('/auth/login/')
+    }
+  }, [auth.loading, auth.user, router])
+
   return auth
 }

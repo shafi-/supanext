@@ -19,7 +19,6 @@ export const Rpc = {
     Create: 'create_organization' satisfies DbFunction,
     GetMy: 'get_my_organizations' satisfies DbFunction,
     Get: 'get_organization' satisfies DbFunction,
-    GetStats: 'get_org_stats' satisfies DbFunction,
     Update: 'update_organization' satisfies DbFunction,
     Delete: 'delete_organization' satisfies DbFunction,
   },
@@ -41,10 +40,12 @@ export const Rpc = {
     GetMany: 'get_invites' satisfies DbFunction,
     Validate: 'validate_invite' satisfies DbFunction,
     Accept: 'accept_invite' satisfies DbFunction,
+    Revoke: 'revoke_invite' satisfies DbFunction,
   },
   Admin: {
     GetStats: 'get_system_stats' satisfies DbFunction,
     GetAllOrgs: 'get_all_organizations' satisfies DbFunction,
+    IsSystemAdmin: 'is_system_admin' satisfies DbFunction,
   },
 } as const
 

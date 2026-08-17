@@ -132,7 +132,8 @@ export class SupabaseClientManager {
     params?: Record<string, unknown>
   ): Promise<{ data: T | null; error: string | null }> {
     try {
-      const { data, error } = await supabase.rpc(functionName, params as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await supabase.rpc(functionName as any, params as any)
 
       if (error) {
         console.error(`RPC error (${functionName}):`, error.message)

@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -22,8 +24,12 @@ export default function LoginPage() {
 
     try {
       setLoading(true)
-      await signIn(email, password)
-      // Navigation is handled by the signIn function
+      const { error } = await signIn(email, password)
+      if (error) {
+        setError(error)
+      } else {
+        router.push('/dashboard')
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to sign in')
     } finally {

@@ -2,22 +2,42 @@
 
 import { AppLayout } from '@/components/layout/AppLayout'
 import { adminService } from '@/services/AdminService'
+import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useState, useEffect } from 'react'
 import type { SystemStats } from '@/types'
 import Link from 'next/link'
 
 export default function AdminPage() {
+  const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
   const [stats, setStats] = useState<SystemStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      const { data } = await adminService.getSystemStats()
-      if (data) setStats(data)
-      setLoading(false)
+    if (isSystemAdmin) {
+      const load = async () => {
+        const { data } = await adminService.getSystemStats()
+        if (data) setStats(data)
+        setLoading(false)
+      }
+      load()
     }
-    load()
-  }, [])
+  }, [isSystemAdmin])
+
+  if (adminLoading) return <AppLayout><div>Loading...</div></AppLayout>
+
+  if (!isSystemAdmin) {
+    return (
+      <AppLayout>
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+          <p className="mt-2 text-gray-600">You don&apos;t have permission to access this page.</p>
+          <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">
+            Back to home
+          </Link>
+        </div>
+      </AppLayout>
+    )
+  }
 
   if (loading) return <AppLayout><div>Loading...</div></AppLayout>
 

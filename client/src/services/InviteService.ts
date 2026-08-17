@@ -32,6 +32,12 @@ export class InviteService extends BaseRepository {
       p_token: token,
     })
   }
+
+  async revokeInvite(inviteId: string): ServiceData<boolean> {
+    return this.callRpc<boolean>(Rpc.Invite.Revoke, {
+      p_invite_id: inviteId,
+    })
+  }
 }
 
 export const inviteService = new InviteService()

@@ -3,13 +3,15 @@
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useRequireAuth } from '@/hooks/useAuth'
 import { useOrganization } from '@/hooks/useOrganization'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useRequiredParam, isUuid } from '@/hooks/useQueryParam'
 import { organizationService } from '@/services/OrganizationService'
 import { todoService } from '@/services/TodoService'
 import { memberService } from '@/services/MemberService'
+import { inviteService } from '@/services/InviteService'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import type { Todo, MemberView } from '@/types'
+import type { Todo, MemberView, Invite } from '@/types'
 
 export default function OrgsPage() {
   useRequireAuth()
@@ -67,6 +69,7 @@ function OrgList() {
 
 function OrgDetail({ orgId }: { orgId: string }) {
   const { currentOrg } = useOrganization()
+  const { isOrgAdmin } = usePermissions()
   const [tab, setTab] = useState<'todos' | 'members' | 'settings'>('todos')
   if (!currentOrg) return null
   return (
@@ -74,9 +77,11 @@ function OrgDetail({ orgId }: { orgId: string }) {
       <h1 className="text-2xl font-bold">{currentOrg.name}</h1>
       <p className="text-gray-600">{currentOrg.description ?? 'No description'}</p>
       <div className="flex gap-4 border-b mb-4">
-        {(['todos', 'members', 'settings'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`pb-2 capitalize ${tab === t ? 'border-b-2 border-blue-600 font-medium' : ''}`}>{t}</button>
-        ))}
+        <button onClick={() => setTab('todos')} className={`pb-2 ${tab === 'todos' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Todos</button>
+        <button onClick={() => setTab('members')} className={`pb-2 ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Members</button>
+        {isOrgAdmin() && (
+          <button onClick={() => setTab('settings')} className={`pb-2 ${tab === 'settings' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Settings</button>
+        )}
       </div>
       {tab === 'todos' && <TodosTab orgId={orgId} />}
       {tab === 'members' && <MembersTab orgId={orgId} />}
@@ -131,20 +136,28 @@ function TodosTab({ orgId }: { orgId: string }) {
 }
 
 function MembersTab({ orgId }: { orgId: string }) {
+  const { isOrgAdmin } = usePermissions()
   const [members, setMembers] = useState<MemberView[]>([])
+  const [invites, setInvites] = useState<Invite[]>([])
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('member')
+  const [activeSubTab, setActiveSubTab] = useState<'members' | 'invites'>('members')
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await memberService.getMembers(orgId)
-    if (data) setMembers(data)
+    const [{ data: memberData }, { data: inviteData }] = await Promise.all([
+      memberService.getMembers(orgId),
+      isOrgAdmin() ? inviteService.getInvites(orgId) : Promise.resolve({ data: [] }),
+    ])
+    if (memberData) setMembers(memberData)
+    if (inviteData) setInvites(inviteData)
     setLoading(false)
-  }, [orgId])
+  }, [orgId, isOrgAdmin])
 
   useEffect(() => { load() }, [load])
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
     const val = email.trim()
     if (!val) return
@@ -153,25 +166,106 @@ function MembersTab({ orgId }: { orgId: string }) {
     load()
   }
 
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const val = email.trim()
+    if (!val) return
+    await inviteService.generateInvite(orgId, val, inviteRole)
+    setEmail('')
+    load()
+  }
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    await memberService.updateMemberRole(orgId, userId, newRole)
+    load()
+  }
+
+  const handleRemoveMember = async (userId: string) => {
+    await memberService.removeMember(orgId, userId)
+    load()
+  }
+
+  if (loading) return <div>Loading...</div>
+
   return (
     <div className="space-y-4">
-      <form onSubmit={handleAdd} className="flex gap-2">
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Add by email..." className="flex-1 border rounded-md px-3 py-2" />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md">Add</button>
-      </form>
-      {loading ? <div>Loading...</div> : (
-        <ul className="space-y-2">
-          {members.map((m) => (
-            <li key={m.id} className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-              <div>
-                <p className="font-medium">{m.full_name ?? m.email}</p>
-                <p className="text-sm text-gray-500">{m.email} - {m.role}</p>
-              </div>
-              <button onClick={() => memberService.removeMember(orgId, m.user_id).then(load)} className="ml-auto text-red-600 hover:text-red-800">Remove</button>
-            </li>
-          ))}
-          {members.length === 0 && <p className="text-gray-500">No members yet.</p>}
-        </ul>
+      {isOrgAdmin() && (
+        <div className="flex gap-2 border-b mb-4">
+          <button onClick={() => setActiveSubTab('members')} className={`pb-2 ${activeSubTab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Members</button>
+          <button onClick={() => setActiveSubTab('invites')} className={`pb-2 ${activeSubTab === 'invites' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Pending Invites ({invites.length})</button>
+        </div>
+      )}
+
+      {activeSubTab === 'members' && (
+        <>
+          {isOrgAdmin() && (
+            <form onSubmit={handleAddMember} className="flex gap-2">
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Add member by email..." className="flex-1 border rounded-md px-3 py-2" />
+              <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md">Add</button>
+            </form>
+          )}
+          <ul className="space-y-2">
+            {members.map((m) => (
+              <li key={m.id} className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
+                <div className="flex-1">
+                  <p className="font-medium">{m.full_name ?? m.email}</p>
+                  <p className="text-sm text-gray-500">{m.email}</p>
+                </div>
+                {isOrgAdmin() ? (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={m.role}
+                      onChange={(e) => handleRoleChange(m.user_id, e.target.value)}
+                      className="border rounded px-2 py-1 text-sm"
+                    >
+                      <option value="viewer">Viewer</option>
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <button onClick={() => handleRemoveMember(m.user_id)} className="text-red-600 hover:text-red-800 text-sm">Remove</button>
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-500">{m.role}</span>
+                )}
+              </li>
+            ))}
+            {members.length === 0 && <p className="text-gray-500">No members yet.</p>}
+          </ul>
+        </>
+      )}
+
+      {activeSubTab === 'invites' && isOrgAdmin() && (
+        <>
+          <form onSubmit={handleInvite} className="flex gap-2">
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Invite by email..." className="flex-1 border rounded-md px-3 py-2" />
+            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="border rounded px-2 py-2">
+              <option value="viewer">Viewer</option>
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md">Invite</button>
+          </form>
+          <ul className="space-y-2">
+            {invites.map((inv) => (
+              <li key={inv.id} className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
+                <div className="flex-1">
+                  <p className="font-medium">{inv.email}</p>
+                  <p className="text-sm text-gray-500">Role: {inv.role} · Expires: {new Date(inv.expires_at).toLocaleDateString()}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await inviteService.revokeInvite(inv.id)
+                    load()
+                  }}
+                  className="text-red-600 hover:text-red-800 text-sm"
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+            {invites.length === 0 && <p className="text-gray-500">No pending invites.</p>}
+          </ul>
+        </>
       )}
     </div>
   )
@@ -179,6 +273,7 @@ function MembersTab({ orgId }: { orgId: string }) {
 
 function SettingsTab({ orgId }: { orgId: string }) {
   const { currentOrg, refreshOrg } = useOrganization()
+  const { isOrgAdmin } = usePermissions()
   const [name, setName] = useState(currentOrg?.name ?? '')
   const [description, setDescription] = useState(currentOrg?.description ?? '')
   const [saving, setSaving] = useState(false)
@@ -200,6 +295,14 @@ function SettingsTab({ orgId }: { orgId: string }) {
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  if (!isOrgAdmin()) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">Only admins and owners can manage organization settings.</p>
+      </div>
+    )
   }
 
   return (
