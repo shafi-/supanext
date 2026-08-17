@@ -6,13 +6,23 @@ const TEST_PASSWORD = 'ProtectedPass123!'
 test.describe('Protected Pages', () => {
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage()
+    // Try register, fall back to login if user already exists
     await page.goto('/auth/register/')
     await page.locator('#fullName').fill('Protected Test User')
     await page.locator('#email').fill(TEST_EMAIL)
     await page.locator('#password').fill(TEST_PASSWORD)
     await page.locator('#confirmPassword').fill(TEST_PASSWORD)
     await page.getByRole('button', { name: 'Create Account' }).click()
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+    try {
+      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+    } catch {
+      // User might already exist from parallel worker — try login
+      await page.goto('/auth/login/')
+      await page.locator('#email').fill(TEST_EMAIL)
+      await page.locator('#password').fill(TEST_PASSWORD)
+      await page.getByRole('button', { name: 'Sign In' }).click()
+      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+    }
     await page.close()
   })
 
