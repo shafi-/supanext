@@ -174,6 +174,7 @@ CREATE POLICY "deny_all_todos" ON todos FOR ALL USING (false);
 CREATE POLICY "deny_all_invites" ON invites FOR ALL USING (false);
 
 -- Selective policies
+CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "users_view_own_audit_logs" ON audit_logs FOR SELECT USING (
   user_id = auth.uid()
   OR organization_id IN (
