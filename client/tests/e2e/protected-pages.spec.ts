@@ -1,31 +1,27 @@
 import { test, expect } from '@playwright/test'
 
-const TEST_EMAIL = `protected-${Date.now()}@example.com`
+const TEST_EMAIL = `protected-${crypto.randomUUID()}@example.com`
 const TEST_PASSWORD = 'ProtectedPass123!'
 
-test.describe('Protected Pages', () => {
-  test.beforeAll(async ({ browser }) => {
-    const page = await browser.newPage()
-    // Try register, fall back to login if user already exists
-    await page.goto('/auth/register/')
-    await page.locator('#fullName').fill('Protected Test User')
+async function registerOrLogin(page: import('@playwright/test').Page) {
+  await page.goto('/auth/register/')
+  await page.locator('#fullName').fill('Protected Test User')
+  await page.locator('#email').fill(TEST_EMAIL)
+  await page.locator('#password').fill(TEST_PASSWORD)
+  await page.locator('#confirmPassword').fill(TEST_PASSWORD)
+  await page.getByRole('button', { name: 'Create Account' }).click()
+  try {
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+  } catch {
+    await page.goto('/auth/login/')
     await page.locator('#email').fill(TEST_EMAIL)
     await page.locator('#password').fill(TEST_PASSWORD)
-    await page.locator('#confirmPassword').fill(TEST_PASSWORD)
-    await page.getByRole('button', { name: 'Create Account' }).click()
-    try {
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
-    } catch {
-      // User might already exist from parallel worker — try login
-      await page.goto('/auth/login/')
-      await page.locator('#email').fill(TEST_EMAIL)
-      await page.locator('#password').fill(TEST_PASSWORD)
-      await page.getByRole('button', { name: 'Sign In' }).click()
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
-    }
-    await page.close()
-  })
+    await page.getByRole('button', { name: 'Sign In' }).click()
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+  }
+}
 
+test.describe('Protected Pages', () => {
   test.describe('Profile Page', () => {
     test('redirects to login when not authenticated', async ({ page }) => {
       await page.goto('/profile/')
@@ -33,11 +29,7 @@ test.describe('Protected Pages', () => {
     })
 
     test('displays user email when authenticated', async ({ page }) => {
-      await page.goto('/auth/login/')
-      await page.locator('#email').fill(TEST_EMAIL)
-      await page.locator('#password').fill(TEST_PASSWORD)
-      await page.getByRole('button', { name: 'Sign In' }).click()
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+      await registerOrLogin(page)
 
       await page.goto('/profile/')
       await expect(page.locator('h1')).toContainText('Profile')
@@ -48,7 +40,6 @@ test.describe('Protected Pages', () => {
   test.describe('Orgs Page', () => {
     test('redirects to login when not authenticated', async ({ page }) => {
       await page.goto('/orgs/')
-      // Orgs page may show an error or redirect — either is acceptable
       const url = page.url()
       const isOnOrgs = url.includes('/orgs/')
       const isOnLogin = url.includes('/auth/login/')
@@ -56,11 +47,7 @@ test.describe('Protected Pages', () => {
     })
 
     test('loads orgs page when authenticated', async ({ page }) => {
-      await page.goto('/auth/login/')
-      await page.locator('#email').fill(TEST_EMAIL)
-      await page.locator('#password').fill(TEST_PASSWORD)
-      await page.getByRole('button', { name: 'Sign In' }).click()
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+      await registerOrLogin(page)
 
       await page.goto('/orgs/')
       await expect(page.locator('body')).toBeVisible()
