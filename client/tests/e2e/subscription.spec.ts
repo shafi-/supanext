@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
+import { execSync } from 'child_process'
 
 const ADMIN_PASSWORD = 'AdminPassword123!'
 const ADMIN_EMAIL = `sub-admin-${Date.now()}@example.com`
-const SERVICE_KEY = 'REMOVED_SECRET'
+const SERVICE_KEY = execSync('supabase status 2>&1 | grep "Secret key" | sed "s/.*: //"').toString().trim()
 
 async function createSystemAdmin(page: import('@playwright/test').Page) {
   // Register user

@@ -15,8 +15,15 @@ PASSWORD="${2:?Usage: $0 <email> <password> [full_name]}"
 FULL_NAME="${3:-System Admin}"
 
 API_URL="http://127.0.0.1:54321"
-ANON_KEY="sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
-SERVICE_KEY="REMOVED_SECRET"
+
+# Get keys from supabase status
+ANON_KEY=$(supabase status 2>&1 | grep "Publishable key" | sed 's/.*: //')
+SERVICE_KEY=$(supabase status 2>&1 | grep "Secret key" | sed 's/.*: //')
+
+if [ -z "$ANON_KEY" ] || [ -z "$SERVICE_KEY" ]; then
+  echo "Error: Could not get keys from supabase status. Is supabase running?"
+  exit 1
+fi
 
 echo "1. Registering user: $EMAIL"
 
