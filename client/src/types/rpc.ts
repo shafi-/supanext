@@ -61,6 +61,9 @@ export const Rpc = {
     GetMy: 'get_my_subscription' satisfies DbFunction,
     HasFeature: 'has_feature' satisfies DbFunction,
   },
+  Public: {
+    GetOrgBySlug: 'get_public_org_by_slug' satisfies DbFunction,
+  },
 } as const
 
 export type RpcFunction =
@@ -71,3 +74,4 @@ export type RpcFunction =
   | (typeof Rpc.Invite)[keyof typeof Rpc.Invite]
   | (typeof Rpc.Admin)[keyof typeof Rpc.Admin]
   | (typeof Rpc.Subscription)[keyof typeof Rpc.Subscription]
+  | (typeof Rpc.Public)[keyof typeof Rpc.Public]

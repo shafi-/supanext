@@ -286,6 +286,7 @@ function SettingsTab({ orgId }: { orgId: string }) {
   const { currentOrg, refreshOrg } = useOrganization()
   const { isOrgAdmin } = usePermissions()
   const [name, setName] = useState(currentOrg?.name ?? '')
+  const [slug, setSlug] = useState(currentOrg?.slug ?? '')
   const [description, setDescription] = useState(currentOrg?.description ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -293,6 +294,7 @@ function SettingsTab({ orgId }: { orgId: string }) {
   useEffect(() => {
     if (currentOrg) {
       setName(currentOrg.name)
+      setSlug(currentOrg.slug)
       setDescription(currentOrg.description ?? '')
     }
   }, [currentOrg])
@@ -301,11 +303,24 @@ function SettingsTab({ orgId }: { orgId: string }) {
     e.preventDefault()
     if (!name.trim()) return
     setSaving(true)
-    await organizationService.updateOrganization(orgId, { name: name.trim(), description: description.trim() || undefined })
-    await refreshOrg()
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      const { error } = await organizationService.updateOrganization(orgId, {
+        name: name.trim(),
+        slug: slug.trim(),
+        description: description.trim() || undefined,
+      })
+      if (error) {
+        setSaving(false)
+        return
+      }
+      await refreshOrg()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      // Error already handled by service
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!isOrgAdmin()) {
@@ -321,6 +336,17 @@ function SettingsTab({ orgId }: { orgId: string }) {
       <div>
         <label className="block text-sm font-medium text-gray-700">Name</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" required />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Slug</label>
+        <input
+          value={slug}
+          onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+          pattern="[a-z0-9\-]+"
+          className="mt-1 block w-full border rounded-md px-3 py-2 font-mono"
+          required
+        />
+        <p className="mt-1 text-xs text-gray-500">Used in public URL: /orgs/public/?slug={slug}</p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Description</label>

@@ -20,4 +20,5 @@ export interface Membership {
   role: string
   permissions: string[]
   is_active: boolean
+  is_owner: boolean
 }

@@ -73,48 +73,30 @@ CREATE POLICY "deny_all_subscription_history" ON subscription_history FOR ALL US
 
 -- System admins can do everything
 CREATE POLICY "System admins can manage subscription plans" ON subscription_plans FOR ALL USING (
-  is_system_admin(auth.uid())
+  is_system_admin()
 );
 
 CREATE POLICY "System admins can manage org subscriptions" ON organization_subscriptions FOR ALL USING (
-  is_system_admin(auth.uid())
+  is_system_admin()
 );
 
 CREATE POLICY "System admins can view subscription history" ON subscription_history FOR SELECT USING (
-  is_system_admin(auth.uid())
+  is_system_admin()
 );
 
--- Org owners can view their own subscription
+-- Org owners can view their own subscription (owner-only via is_owner short-circuit)
 CREATE POLICY "Owners can view own subscription" ON organization_subscriptions FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE organization_id = organization_subscriptions.organization_id
-      AND user_id = auth.uid()
-      AND role = 'owner'
-      AND status = 'active'
-  )
+  can_perform('subscription:read', organization_id)
 );
 
 -- Org owners can insert their own subscription (subscribe/upgrade)
 CREATE POLICY "Owners can create own subscription" ON organization_subscriptions FOR INSERT WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE organization_id = organization_subscriptions.organization_id
-      AND user_id = auth.uid()
-      AND role = 'owner'
-      AND status = 'active'
-  )
+  can_perform('subscription:manage', organization_id)
 );
 
 -- Org owners can update their own subscription (cancel)
 CREATE POLICY "Owners can update own subscription" ON organization_subscriptions FOR UPDATE USING (
-  EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE organization_id = organization_subscriptions.organization_id
-      AND user_id = auth.uid()
-      AND role = 'owner'
-      AND status = 'active'
-  )
+  can_perform('subscription:manage', organization_id)
 );
 
 -- Org members can view subscription history for their org
@@ -129,13 +111,7 @@ CREATE POLICY "Members can view own org subscription history" ON subscription_hi
 
 -- Org owners can insert subscription history (for their org)
 CREATE POLICY "Owners can create own org subscription history" ON subscription_history FOR INSERT WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE organization_id = subscription_history.organization_id
-      AND user_id = auth.uid()
-      AND role = 'owner'
-      AND status = 'active'
-  )
+  can_perform('subscription:manage', organization_id)
 );
 
 -- ====================================================================
@@ -173,7 +149,7 @@ RETURNS subscription_plans AS $$
 DECLARE
   new_plan subscription_plans;
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Only system admins can create subscription plans';
   END IF;
 
@@ -199,7 +175,7 @@ RETURNS subscription_plans AS $$
 DECLARE
   updated_plan subscription_plans;
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Only system admins can update subscription plans';
   END IF;
 
@@ -301,7 +277,7 @@ DECLARE
   v_sub organization_subscriptions%ROWTYPE;
   v_plan subscription_plans%ROWTYPE;
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Only system admins can pause subscriptions';
   END IF;
 
@@ -333,7 +309,7 @@ RETURNS BOOLEAN AS $$
 DECLARE
   v_sub organization_subscriptions%ROWTYPE;
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Only system admins can unpause subscriptions';
   END IF;
 
@@ -373,14 +349,8 @@ DECLARE
   v_plan subscription_plans;
   v_period_end TIMESTAMPTZ;
 BEGIN
-  -- Verify owner
-  IF NOT EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE organization_id = p_org_id
-      AND user_id = auth.uid()
-      AND role = 'owner'
-      AND status = 'active'
-  ) THEN
+  -- Verify owner (owner-only via is_owner short-circuit in can_perform)
+  IF NOT can_perform('subscription:manage', p_org_id) THEN
     RAISE EXCEPTION 'Only organization owners can subscribe to plans';
   END IF;
 
@@ -440,14 +410,8 @@ DECLARE
   v_period_end TIMESTAMPTZ;
   v_action TEXT;
 BEGIN
-  -- Verify owner
-  IF NOT EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE organization_id = p_org_id
-      AND user_id = auth.uid()
-      AND role = 'owner'
-      AND status = 'active'
-  ) THEN
+  -- Verify owner (owner-only via is_owner short-circuit in can_perform)
+  IF NOT can_perform('subscription:manage', p_org_id) THEN
     RAISE EXCEPTION 'Only organization owners can change plans';
   END IF;
 
@@ -522,14 +486,8 @@ RETURNS BOOLEAN AS $$
 DECLARE
   v_sub organization_subscriptions%ROWTYPE;
 BEGIN
-  -- Verify owner
-  IF NOT EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE organization_id = p_org_id
-      AND user_id = auth.uid()
-      AND role = 'owner'
-      AND status = 'active'
-  ) THEN
+  -- Verify owner (owner-only via is_owner short-circuit in can_perform)
+  IF NOT can_perform('subscription:manage', p_org_id) THEN
     RAISE EXCEPTION 'Only organization owners can cancel subscriptions';
   END IF;
 

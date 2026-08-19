@@ -5,7 +5,8 @@
 -- 1. All operations through PostgreSQL functions (no direct table access)
 -- 2. Restrictive RLS (deny all by default, selective policies)
 -- 3. Business logic encapsulated in database functions
--- 4. SECURITY DEFINER on all functions
+-- 4. SECURITY INVOKER on utility functions (run as auth user)
+-- 5. SECURITY DEFINER only on triggers, CLI helpers, and anon-access fns
 -- ====================================================================
 
 -- Extensions
@@ -44,6 +45,7 @@ CREATE TABLE organization_members (
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   role TEXT NOT NULL DEFAULT 'member',
   status TEXT NOT NULL DEFAULT 'active',
+  is_owner BOOLEAN NOT NULL DEFAULT false,
   invited_by UUID REFERENCES profiles(id),
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -55,9 +57,16 @@ CREATE TABLE roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT UNIQUE NOT NULL,
   description TEXT,
-  permissions TEXT[] DEFAULT '{}',
   is_system_role BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE role_permissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  role TEXT NOT NULL REFERENCES roles(name) ON DELETE CASCADE,
+  permission TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(role, permission)
 );
 
 CREATE TABLE audit_logs (
@@ -115,42 +124,60 @@ CREATE INDEX idx_todos_created_by ON todos(created_by);
 CREATE INDEX idx_invites_organization_id ON invites(organization_id);
 CREATE INDEX idx_invites_email ON invites(email);
 CREATE INDEX idx_invites_token ON invites(token);
+CREATE INDEX idx_role_permissions_role ON role_permissions(role);
+CREATE INDEX idx_role_permissions_permission ON role_permissions(permission);
 
 -- ====================================================================
 -- HELPER FUNCTIONS (must exist before RLS policies reference them)
 -- ====================================================================
 
-CREATE OR REPLACE FUNCTION is_member(check_user_id UUID, check_org_id UUID)
+-- can_perform: core RBAC check. INVOKER — subject to RLS.
+CREATE OR REPLACE FUNCTION can_perform(permission_name TEXT, p_org_id UUID)
 RETURNS BOOLEAN AS $$
   SELECT EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE user_id = check_user_id AND organization_id = check_org_id AND status = 'active'
+    SELECT 1 FROM organization_members om
+    WHERE om.organization_id = p_org_id
+      AND om.user_id = auth.uid()
+      AND om.status = 'active'
+      AND om.is_owner = true
+  ) OR EXISTS (
+    SELECT 1 FROM organization_members om
+    JOIN role_permissions rp ON rp.role = om.role
+    WHERE om.organization_id = p_org_id
+      AND om.user_id = auth.uid()
+      AND om.status = 'active'
+      AND (rp.permission = permission_name OR rp.permission = '*')
   );
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION is_admin_or_owner(check_user_id UUID, check_org_id UUID)
-RETURNS BOOLEAN AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM organization_members
-    WHERE user_id = check_user_id AND organization_id = check_org_id
-      AND role IN ('admin', 'owner') AND status = 'active'
-  );
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
-
-CREATE OR REPLACE FUNCTION get_user_role(check_user_id UUID, check_org_id UUID)
-RETURNS TEXT AS $$
-  SELECT role FROM organization_members
-  WHERE user_id = check_user_id AND organization_id = check_org_id AND status = 'active'
-  LIMIT 1;
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
-
-CREATE OR REPLACE FUNCTION is_system_admin(check_user_id UUID)
+-- is_system_admin: checks profile flag. INVOKER — reads auth.uid().
+CREATE OR REPLACE FUNCTION is_system_admin()
 RETURNS BOOLEAN AS $$
   SELECT COALESCE(
-    (SELECT is_system_admin FROM profiles WHERE id = check_user_id),
+    (SELECT is_system_admin FROM profiles WHERE id = auth.uid()),
     false
   );
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public;
+
+-- ====================================================================
+-- PRIVATE SCHEMA
+-- ====================================================================
+
+CREATE SCHEMA IF NOT EXISTS private;
+
+-- SECURITY DEFINER function to get user's org IDs (breaks RLS recursion)
+CREATE OR REPLACE FUNCTION private.get_user_org_ids()
+RETURNS SETOF UUID
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT organization_id
+  FROM public.organization_members
+  WHERE user_id = auth.uid()
+    AND status = 'active'
+$$;
 
 -- ====================================================================
 -- RLS POLICIES
@@ -160,6 +187,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
@@ -169,12 +197,15 @@ CREATE POLICY "deny_all_profiles" ON profiles FOR ALL USING (false);
 CREATE POLICY "deny_all_organizations" ON organizations FOR ALL USING (false);
 CREATE POLICY "deny_all_organization_members" ON organization_members FOR ALL USING (false);
 CREATE POLICY "deny_all_roles" ON roles FOR ALL USING (false);
+CREATE POLICY "deny_all_role_permissions" ON role_permissions FOR ALL USING (false);
 CREATE POLICY "deny_all_audit_logs" ON audit_logs FOR ALL USING (false);
 CREATE POLICY "deny_all_todos" ON todos FOR ALL USING (false);
 CREATE POLICY "deny_all_invites" ON invites FOR ALL USING (false);
 
--- Selective policies
+-- Profiles: user can view own profile
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+
+-- Audit logs: user can view own + org logs
 CREATE POLICY "users_view_own_audit_logs" ON audit_logs FOR SELECT USING (
   user_id = auth.uid()
   OR organization_id IN (
@@ -182,45 +213,61 @@ CREATE POLICY "users_view_own_audit_logs" ON audit_logs FOR SELECT USING (
   )
 );
 
+-- Role permissions: readable by all authenticated users (reference data)
+CREATE POLICY "Authenticated can read role_permissions" ON role_permissions FOR SELECT USING (
+  auth.uid() IS NOT NULL
+);
+
+-- Organizations: read via can_perform
 CREATE POLICY "Members can view organizations" ON organizations FOR SELECT USING (
-  EXISTS (SELECT 1 FROM organization_members WHERE organization_id = id AND user_id = auth.uid())
+  can_perform('org:read', id)
+);
+CREATE POLICY "Admins can update organizations" ON organizations FOR UPDATE USING (
+  can_perform('org:update', id)
+);
+CREATE POLICY "Admins can delete organizations" ON organizations FOR DELETE USING (
+  can_perform('org:delete', id)
 );
 
-CREATE POLICY "Owners/admins can update organizations" ON organizations FOR UPDATE USING (is_admin_or_owner(auth.uid(), id));
-
-CREATE POLICY "Owners/admins can delete organizations" ON organizations FOR DELETE USING (is_admin_or_owner(auth.uid(), id));
-
-CREATE POLICY "Members can view members" ON organization_members FOR SELECT USING (
-  EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id = organization_members.organization_id AND om.user_id = auth.uid())
+-- Organization members: members can see all members in their org + system admin
+CREATE POLICY "members_can_read_same_org" ON organization_members FOR SELECT TO authenticated USING (
+  organization_id IN (SELECT private.get_user_org_ids())
+  OR is_system_admin()
+);
+CREATE POLICY "Admins can insert members" ON organization_members FOR INSERT WITH CHECK (
+  can_perform('members:create', organization_id)
+);
+CREATE POLICY "Admins can update members" ON organization_members FOR UPDATE USING (
+  can_perform('members:update', organization_id)
+);
+CREATE POLICY "Admins can delete members" ON organization_members FOR DELETE USING (
+  can_perform('members:delete', organization_id)
 );
 
-CREATE POLICY "Admins can insert members" ON organization_members FOR INSERT WITH CHECK (is_admin_or_owner(auth.uid(), organization_id));
-
-CREATE POLICY "Admins can update members" ON organization_members FOR UPDATE USING (is_admin_or_owner(auth.uid(), organization_id));
-
-CREATE POLICY "Admins can delete members" ON organization_members FOR DELETE USING (is_admin_or_owner(auth.uid(), organization_id));
-
+-- Todos: all actions via can_perform
 CREATE POLICY "Members can view todos" ON todos FOR SELECT USING (
-  EXISTS (SELECT 1 FROM organization_members WHERE organization_id = todos.organization_id AND user_id = auth.uid())
+  can_perform('todos:read', organization_id)
 );
-
 CREATE POLICY "Members can create todos" ON todos FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM organization_members WHERE organization_id = todos.organization_id AND user_id = auth.uid())
+  can_perform('todos:create', organization_id)
 );
-
 CREATE POLICY "Members can update todos" ON todos FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM organization_members WHERE organization_id = todos.organization_id AND user_id = auth.uid())
+  can_perform('todos:update', organization_id)
 );
-
 CREATE POLICY "Members can delete todos" ON todos FOR DELETE USING (
-  EXISTS (SELECT 1 FROM organization_members WHERE organization_id = todos.organization_id AND user_id = auth.uid())
+  can_perform('todos:delete', organization_id)
 );
 
-CREATE POLICY "Admins can view invites" ON invites FOR SELECT USING (is_admin_or_owner(auth.uid(), organization_id));
-
-CREATE POLICY "Admins can create invites" ON invites FOR INSERT WITH CHECK (is_admin_or_owner(auth.uid(), organization_id));
-
-CREATE POLICY "Admins can delete invites" ON invites FOR DELETE USING (is_admin_or_owner(auth.uid(), organization_id));
+-- Invites: admin/owner actions via can_perform
+CREATE POLICY "Admins can view invites" ON invites FOR SELECT USING (
+  can_perform('invites:read', organization_id)
+);
+CREATE POLICY "Admins can create invites" ON invites FOR INSERT WITH CHECK (
+  can_perform('invites:create', organization_id)
+);
+CREATE POLICY "Admins can delete invites" ON invites FOR DELETE USING (
+  can_perform('invites:delete', organization_id)
+);
 
 -- ====================================================================
 -- VIEWS
@@ -254,7 +301,7 @@ FROM organization_members om
 JOIN profiles p ON om.user_id = p.id;
 
 CREATE VIEW role_view AS
-SELECT r.id, r.name, r.description, r.permissions, r.is_system_role, r.created_at
+SELECT r.id, r.name, r.description, r.is_system_role, r.created_at
 FROM roles r;
 
 -- ====================================================================
@@ -368,7 +415,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ====================================================================
--- ORGANIZATION FUNCTIONS
+-- ORGANIZATION FUNCTIONS (all INVOKER — RLS enforces via can_perform)
 -- ====================================================================
 
 CREATE OR REPLACE FUNCTION create_organization(
@@ -385,23 +432,23 @@ BEGIN
   VALUES (org_name, org_slug, org_description, org_settings)
   RETURNING * INTO new_org;
 
-  INSERT INTO organization_members (organization_id, user_id, role, status)
-  VALUES (new_org.id, auth.uid(), 'owner', 'active');
+  INSERT INTO organization_members (organization_id, user_id, role, status, is_owner)
+  VALUES (new_org.id, auth.uid(), 'admin', 'active', true);
 
   RETURN QUERY SELECT * FROM organization_view WHERE id = new_org.id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION get_my_organizations()
 RETURNS SETOF organization_view AS $$
   SELECT * FROM organization_view WHERE user_id = auth.uid();
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE sql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION get_organization(target_org_id UUID)
 RETURNS SETOF organization_detail_view AS $$
   SELECT * FROM organization_detail_view WHERE id = target_org_id
-  AND id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid());
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+  AND can_perform('org:read', target_org_id);
+$$ LANGUAGE sql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION update_organization(
   target_org_id UUID,
@@ -412,7 +459,7 @@ CREATE OR REPLACE FUNCTION update_organization(
 )
 RETURNS SETOF organization_view AS $$
 BEGIN
-  IF NOT is_admin_or_owner(auth.uid(), target_org_id) THEN
+  IF NOT can_perform('org:update', target_org_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
@@ -427,22 +474,22 @@ BEGIN
 
   RETURN QUERY SELECT * FROM organization_view WHERE id = target_org_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION delete_organization(target_org_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
-  IF NOT is_admin_or_owner(auth.uid(), target_org_id) THEN
+  IF NOT can_perform('org:delete', target_org_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
   DELETE FROM organizations WHERE id = target_org_id;
   RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 -- ====================================================================
--- MEMBER FUNCTIONS
+-- MEMBER FUNCTIONS (all INVOKER)
 -- ====================================================================
 
 CREATE OR REPLACE FUNCTION add_organization_member(
@@ -454,7 +501,7 @@ RETURNS SETOF member_view AS $$
 DECLARE
   target_user_id UUID;
 BEGIN
-  IF NOT is_admin_or_owner(auth.uid(), target_org_id) THEN
+  IF NOT can_perform('members:create', target_org_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
@@ -470,7 +517,7 @@ BEGIN
 
   RETURN QUERY SELECT * FROM member_view WHERE organization_id = target_org_id AND user_id = target_user_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION remove_organization_member(
   target_org_id UUID,
@@ -478,20 +525,29 @@ CREATE OR REPLACE FUNCTION remove_organization_member(
 )
 RETURNS BOOLEAN AS $$
 BEGIN
-  IF NOT is_admin_or_owner(auth.uid(), target_org_id) THEN
+  IF NOT can_perform('members:delete', target_org_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
   DELETE FROM organization_members WHERE organization_id = target_org_id AND user_id = target_user_id;
   RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
+-- get_organization_members: INVOKER + explicit guard.
+-- member_view bypasses RLS (view runs as owner), so the can_perform
+-- guard is the actual enforcement.
 CREATE OR REPLACE FUNCTION get_organization_members(target_org_id UUID)
 RETURNS SETOF member_view AS $$
-  SELECT * FROM member_view WHERE organization_id = target_org_id
-  AND organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid());
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+BEGIN
+  IF NOT can_perform('members:read', target_org_id) THEN
+    RAISE EXCEPTION 'Not authorized to view members';
+  END IF;
+
+  RETURN QUERY
+  SELECT * FROM member_view WHERE organization_id = target_org_id;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION update_member_role(
   target_org_id UUID,
@@ -500,7 +556,7 @@ CREATE OR REPLACE FUNCTION update_member_role(
 )
 RETURNS SETOF member_view AS $$
 BEGIN
-  IF NOT is_admin_or_owner(auth.uid(), target_org_id) THEN
+  IF NOT can_perform('members:update', target_org_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
@@ -509,18 +565,20 @@ BEGIN
 
   RETURN QUERY SELECT * FROM member_view WHERE organization_id = target_org_id AND user_id = target_user_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION get_membership(p_org_id UUID)
-RETURNS TABLE(role TEXT, permissions TEXT[], is_active BOOLEAN) AS $$
-  SELECT om.role, COALESCE(r.permissions, '{}') AS permissions, (om.status = 'active') AS is_active
+RETURNS TABLE(role TEXT, permissions TEXT[], is_active BOOLEAN, is_owner BOOLEAN) AS $$
+  SELECT om.role,
+    (SELECT ARRAY_AGG(rp.permission) FROM role_permissions rp WHERE rp.role = om.role) AS permissions,
+    (om.status = 'active') AS is_active,
+    om.is_owner
   FROM organization_members om
-  LEFT JOIN roles r ON r.name = om.role
   WHERE om.organization_id = p_org_id AND om.user_id = auth.uid();
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE sql SECURITY INVOKER SET search_path = public;
 
 -- ====================================================================
--- TODO FUNCTIONS
+-- TODO FUNCTIONS (all INVOKER)
 -- ====================================================================
 
 CREATE OR REPLACE FUNCTION create_todo(
@@ -530,7 +588,7 @@ CREATE OR REPLACE FUNCTION create_todo(
 )
 RETURNS SETOF todos AS $$
 BEGIN
-  IF NOT is_member(auth.uid(), p_organization_id) THEN
+  IF NOT can_perform('todos:create', p_organization_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
@@ -539,14 +597,14 @@ BEGIN
   VALUES (p_organization_id, p_title, p_description, auth.uid())
   RETURNING *;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION get_todos(p_organization_id UUID)
 RETURNS SETOF todos AS $$
   SELECT * FROM todos WHERE organization_id = p_organization_id
-  AND organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid())
+  AND can_perform('todos:read', p_organization_id)
   ORDER BY created_at DESC;
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE sql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION update_todo(
   p_todo_id UUID,
@@ -563,25 +621,26 @@ BEGIN
     completed = COALESCE(p_completed, completed),
     updated_at = NOW()
   WHERE id = p_todo_id
-  AND organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid());
+  AND can_perform('todos:update', todos.organization_id);
 
   RETURN QUERY SELECT * FROM todos WHERE id = p_todo_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION delete_todo(p_todo_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   DELETE FROM todos WHERE id = p_todo_id
-  AND organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid());
+  AND can_perform('todos:delete', todos.organization_id);
   RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 -- ====================================================================
 -- INVITE FUNCTIONS
 -- ====================================================================
 
+-- create_invite: INVOKER
 CREATE OR REPLACE FUNCTION create_invite(
   p_organization_id UUID,
   p_email TEXT,
@@ -589,7 +648,7 @@ CREATE OR REPLACE FUNCTION create_invite(
 )
 RETURNS SETOF invites AS $$
 BEGIN
-  IF NOT is_admin_or_owner(auth.uid(), p_organization_id) THEN
+  IF NOT can_perform('invites:create', p_organization_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
@@ -598,17 +657,19 @@ BEGIN
   VALUES (p_organization_id, p_email, p_role, auth.uid())
   RETURNING *;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
+-- get_invites: INVOKER
 CREATE OR REPLACE FUNCTION get_invites(p_organization_id UUID)
 RETURNS SETOF invites AS $$
   SELECT * FROM invites
   WHERE organization_id = p_organization_id
   AND accepted_at IS NULL
   AND expires_at > NOW()
-  AND organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid());
-$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+  AND can_perform('invites:read', p_organization_id);
+$$ LANGUAGE sql SECURITY INVOKER SET search_path = public;
 
+-- validate_invite: SECURITY DEFINER (public — used by invite acceptance flow)
 CREATE OR REPLACE FUNCTION validate_invite(p_token TEXT)
 RETURNS TABLE(invite_id UUID, org_id UUID, org_name TEXT, invite_email TEXT, invite_role TEXT) AS $$
   SELECT i.id, i.organization_id, o.name, i.email, i.role
@@ -617,6 +678,7 @@ RETURNS TABLE(invite_id UUID, org_id UUID, org_name TEXT, invite_email TEXT, inv
   WHERE i.token = p_token AND i.accepted_at IS NULL AND i.expires_at > NOW();
 $$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 
+-- accept_invite: SECURITY DEFINER (public — used by invite acceptance flow)
 CREATE OR REPLACE FUNCTION accept_invite(p_token TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -638,12 +700,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- revoke_invite: INVOKER
 CREATE OR REPLACE FUNCTION revoke_invite(p_invite_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM invites i
-    WHERE i.id = p_invite_id AND is_admin_or_owner(auth.uid(), i.organization_id)
+    WHERE i.id = p_invite_id AND can_perform('invites:delete', i.organization_id)
   ) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
@@ -651,16 +714,16 @@ BEGIN
   DELETE FROM invites WHERE id = p_invite_id;
   RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 -- ====================================================================
--- SYSTEM ADMIN FUNCTIONS
+-- SYSTEM ADMIN FUNCTIONS (INVOKER — checks profiles.is_system_admin)
 -- ====================================================================
 
 CREATE OR REPLACE FUNCTION get_system_stats()
 RETURNS TABLE(total_orgs BIGINT, total_users BIGINT, total_members BIGINT, recent_signups BIGINT) AS $$
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Not authorized: system admin required';
   END IF;
 
@@ -670,23 +733,23 @@ BEGIN
     (SELECT COUNT(*) FROM organization_members),
     (SELECT COUNT(*) FROM profiles WHERE created_at > NOW() - INTERVAL '7 days');
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION get_all_organizations()
 RETURNS SETOF organization_detail_view AS $$
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Not authorized: system admin required';
   END IF;
 
   RETURN QUERY SELECT * FROM organization_detail_view;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION grant_system_admin(target_user_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Not authorized: system admin required';
   END IF;
 
@@ -694,12 +757,12 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'User not found'; END IF;
   RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION revoke_system_admin(target_user_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Not authorized: system admin required';
   END IF;
 
@@ -711,18 +774,18 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'User not found'; END IF;
   RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION get_system_admins()
 RETURNS SETOF profile_view AS $$
 BEGIN
-  IF NOT is_system_admin(auth.uid()) THEN
+  IF NOT is_system_admin() THEN
     RAISE EXCEPTION 'Not authorized: system admin required';
   END IF;
 
   RETURN QUERY SELECT * FROM profiles WHERE is_system_admin = true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY INVOKER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION bootstrap_system_admin()
 RETURNS BOOLEAN AS $$
@@ -741,7 +804,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- CLI/Script helper: set any user as system admin (no auth check, SECURITY DEFINER)
+-- CLI/Script helper: set any user as system admin (SECURITY DEFINER — runs outside user context)
 CREATE OR REPLACE FUNCTION set_system_admin(p_user_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -752,7 +815,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ====================================================================
--- AUTH HANDLER
+-- AUTH HANDLER (SECURITY DEFINER — trigger runs outside user context)
 -- ====================================================================
 
 CREATE OR REPLACE FUNCTION handle_new_user()
@@ -770,8 +833,8 @@ BEGIN
   VALUES (COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)), default_org_slug)
   RETURNING id INTO default_org_id;
 
-  INSERT INTO public.organization_members (organization_id, user_id, role, status, joined_at)
-  VALUES (default_org_id, NEW.id, 'owner', 'active', NOW());
+  INSERT INTO public.organization_members (organization_id, user_id, role, status, is_owner, joined_at)
+  VALUES (default_org_id, NEW.id, 'admin', 'active', true, NOW());
 
   PERFORM public.audit_action(NEW.id, default_org_id, 'user.onboarding_completed', 'organization', default_org_id,
     jsonb_build_object('email', NEW.email, 'auto_created', true));
@@ -818,13 +881,27 @@ CREATE TRIGGER update_todos_updated_at BEFORE UPDATE ON todos
 -- SEED DATA
 -- ====================================================================
 
--- Organization roles only (no system roles)
-INSERT INTO roles (name, description, permissions, is_system_role) VALUES
-  ('owner', 'Organization owner with full access', ARRAY['*'], false),
-  ('admin', 'Organization administrator with elevated access', ARRAY['create', 'read', 'update', 'delete'], false),
-  ('member', 'Organization member with standard access', ARRAY['read', 'update:own'], false),
-  ('viewer', 'Organization viewer with read-only access', ARRAY['read'], false)
+-- Organization roles (no owner — owner is is_owner flag on admin)
+INSERT INTO roles (name, description, is_system_role) VALUES
+  ('admin', 'Organization administrator with elevated access', false),
+  ('member', 'Organization member with standard access', false),
+  ('viewer', 'Organization viewer with read-only access', false)
 ON CONFLICT (name) DO NOTHING;
+
+-- Role permissions (one row per role + permission, resource:action format)
+INSERT INTO role_permissions (role, permission) VALUES
+  -- Admin: full org + members + todos + invites
+  ('admin', 'org:read'), ('admin', 'org:update'), ('admin', 'org:delete'),
+  ('admin', 'members:read'), ('admin', 'members:create'), ('admin', 'members:update'), ('admin', 'members:delete'),
+  ('admin', 'todos:read'), ('admin', 'todos:create'), ('admin', 'todos:update'), ('admin', 'todos:delete'),
+  ('admin', 'invites:read'), ('admin', 'invites:create'), ('admin', 'invites:delete'),
+  -- Member: read org, manage own todos, read invites
+  ('member', 'org:read'), ('member', 'members:read'),
+  ('member', 'todos:read'), ('member', 'todos:create'), ('member', 'todos:update'), ('member', 'todos:delete'),
+  ('member', 'invites:read'),
+  -- Viewer: read-only
+  ('viewer', 'org:read'), ('viewer', 'members:read'), ('viewer', 'todos:read')
+ON CONFLICT (role, permission) DO NOTHING;
 
 -- ====================================================================
 -- GRANTS
@@ -859,12 +936,13 @@ GRANT EXECUTE ON FUNCTION accept_invite(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION revoke_invite(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_system_stats() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_organizations() TO authenticated;
-GRANT EXECUTE ON FUNCTION is_system_admin(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION is_system_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION grant_system_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION revoke_system_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_system_admins() TO authenticated;
 GRANT EXECUTE ON FUNCTION bootstrap_system_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION set_system_admin(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_perform(TEXT, UUID) TO authenticated;
 
 -- ====================================================================
 -- DEV HELPER FUNCTIONS (Optional)
@@ -878,6 +956,7 @@ BEGIN
   DELETE FROM organization_members;
   DELETE FROM organizations;
   DELETE FROM profiles;
+  DELETE FROM role_permissions;
   DELETE FROM roles;
   RAISE NOTICE 'Development data reset completed';
 END;
@@ -898,8 +977,8 @@ BEGIN
   INSERT INTO organizations (name, slug)
   VALUES (test_org_name, lower(regexp_replace(test_org_name, '[^a-zA-Z0-9]+', '-', 'g')))
   RETURNING id INTO test_org_id;
-  INSERT INTO organization_members (organization_id, user_id, role, status, joined_at)
-  VALUES (test_org_id, test_user_id, 'owner', 'active', NOW());
+  INSERT INTO organization_members (organization_id, user_id, role, status, is_owner, joined_at)
+  VALUES (test_org_id, test_user_id, 'admin', 'active', true, NOW());
   RETURN test_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

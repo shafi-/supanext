@@ -186,6 +186,7 @@ export type Database = {
           created_at: string | null
           id: string
           invited_by: string | null
+          is_owner: boolean
           joined_at: string | null
           organization_id: string | null
           role: string
@@ -197,6 +198,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           invited_by?: string | null
+          is_owner?: boolean
           joined_at?: string | null
           organization_id?: string | null
           role?: string
@@ -208,6 +210,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           invited_by?: string | null
+          is_owner?: boolean
           joined_at?: string | null
           organization_id?: string | null
           role?: string
@@ -398,6 +401,42 @@ export type Database = {
         }
         Relationships: []
       }
+      role_permissions: {
+        Row: {
+          created_at: string | null
+          id: string
+          permission: string
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          permission: string
+          role: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          permission?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_role_fkey"
+            columns: ["role"]
+            isOneToOne: false
+            referencedRelation: "role_view"
+            referencedColumns: ["name"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_fkey"
+            columns: ["role"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
       roles: {
         Row: {
           created_at: string | null
@@ -405,7 +444,6 @@ export type Database = {
           id: string
           is_system_role: boolean | null
           name: string
-          permissions: string[] | null
         }
         Insert: {
           created_at?: string | null
@@ -413,7 +451,6 @@ export type Database = {
           id?: string
           is_system_role?: boolean | null
           name: string
-          permissions?: string[] | null
         }
         Update: {
           created_at?: string | null
@@ -421,7 +458,6 @@ export type Database = {
           id?: string
           is_system_role?: boolean | null
           name?: string
-          permissions?: string[] | null
         }
         Relationships: []
       }
@@ -731,7 +767,6 @@ export type Database = {
           id: string | null
           is_system_role: boolean | null
           name: string | null
-          permissions: string[] | null
         }
         Insert: {
           created_at?: string | null
@@ -739,7 +774,6 @@ export type Database = {
           id?: string | null
           is_system_role?: boolean | null
           name?: string | null
-          permissions?: string[] | null
         }
         Update: {
           created_at?: string | null
@@ -747,7 +781,6 @@ export type Database = {
           id?: string | null
           is_system_role?: boolean | null
           name?: string | null
-          permissions?: string[] | null
         }
         Relationships: []
       }
@@ -791,6 +824,10 @@ export type Database = {
         Returns: string
       }
       bootstrap_system_admin: { Args: never; Returns: boolean }
+      can_perform: {
+        Args: { p_org_id: string; permission_name: string }
+        Returns: boolean
+      }
       cancel_subscription: { Args: { p_org_id: string }; Returns: boolean }
       change_plan: {
         Args: {
@@ -967,6 +1004,7 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: {
           is_active: boolean
+          is_owner: boolean
           permissions: string[]
           role: string
         }[]
@@ -1086,6 +1124,16 @@ export type Database = {
           status: string
         }[]
       }
+      get_public_org_by_slug: {
+        Args: { org_slug: string }
+        Returns: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          slug: string
+        }[]
+      }
       get_subscription_history: {
         Args: { p_org_id: string }
         Returns: {
@@ -1185,24 +1233,12 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      get_user_role: {
-        Args: { check_org_id: string; check_user_id: string }
-        Returns: string
-      }
       grant_system_admin: { Args: { target_user_id: string }; Returns: boolean }
       has_feature: {
         Args: { p_feature: string; p_org_id: string }
         Returns: boolean
       }
-      is_admin_or_owner: {
-        Args: { check_org_id: string; check_user_id: string }
-        Returns: boolean
-      }
-      is_member: {
-        Args: { check_org_id: string; check_user_id: string }
-        Returns: boolean
-      }
-      is_system_admin: { Args: { check_user_id: string }; Returns: boolean }
+      is_system_admin: { Args: never; Returns: boolean }
       pause_subscription: { Args: { p_org_id: string }; Returns: boolean }
       remove_organization_member: {
         Args: { target_org_id: string; target_user_id: string }
