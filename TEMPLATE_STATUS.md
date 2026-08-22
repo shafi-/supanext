@@ -46,7 +46,11 @@ and refuses non-local targets).
 - Admin UI for granting system admins (`grant_system_admin` RPC exists,
   no screen yet)
 - Pagination for list RPCs (`get_todos`, `get_organization_members`)
-- Payment provider integration (subscriptions record 'paid' unconditionally)
+- Billing is MANUAL MODE by design: `subscribe_to_plan` records 'paid'
+  unconditionally (admin invoices offline). To charge real money later,
+  replace client-callable subscribe RPCs with PSP webhook writes via an
+  edge function and drop the owner-INSERT policy on
+  `organization_subscriptions` — webhook becomes the only writer
 - Expired-invite cleanup job; audit-log retention
 - Bump Next 14.0.4 → latest patch line
 
