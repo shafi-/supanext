@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    name: Client (lint, format, types, unit, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Type check
+        run: pnpm run type-check
+
+      - name: Unit tests
+        run: npx vitest run
+
+      - name: Build (static export)
+        run: pnpm run build
+
+  database:
+    name: Database (migrations + pgTAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Apply migrations
+        run: supabase db reset
+
+      - name: Run pgTAP suites
+        run: |
+          set -e
+          STATUS=0
+          for f in supabase/tests/database/*.sql; do
+            echo "::group::$f"
+            OUT=$(docker exec -i supabase_db_supanext psql -U postgres -d postgres -f - < "$f" 2>&1) || true
+            echo "$OUT"
+            NOTOK=$(echo "$OUT" | grep -c 'not ok [0-9]' || true)
+            ERRS=$(echo "$OUT" | grep -c 'ERROR:' || true)
+            if [ "${NOTOK:-0}" -gt 0 ] || [ "${ERRS:-0}" -gt 0 ]; then
+              echo "::error::$f failed (assertions_failed=$NOTOK sql_errors=$ERRS)"
+              STATUS=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $STATUS
