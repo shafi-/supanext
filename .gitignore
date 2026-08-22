@@ -45,3 +45,8 @@ client/playwright-report
 # Misc
 *.log
 client/test-results
+
+# Supabase per-environment configs (only config.sample.toml is committed)
+supabase/config.toml
+supabase/config.local.toml
+supabase/config.prod.toml

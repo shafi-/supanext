@@ -86,6 +86,18 @@ setup_supabase() {
         npm install -g supabase
     fi
 
+    # Generate the active config.toml (CLI reads only that filename).
+    # Preference: your config.local.toml > committed sample.
+    if [ ! -f config.toml ]; then
+        if [ -f config.local.toml ]; then
+            cp config.local.toml config.toml
+            log_info "Created config.toml from config.local.toml"
+        else
+            cp config.sample.toml config.toml
+            log_info "Created config.toml from config.sample.toml"
+        fi
+    fi
+
     # Start Supabase
     log_info "Starting Supabase local environment..."
     supabase start
@@ -103,7 +115,7 @@ setup_supabase() {
     log_info "Supabase local URLs:"
     echo "  Database: postgresql://postgres:postgres@localhost:54322/postgres"
     echo "  API: http://localhost:54321"
-    echo "  Studio: http://localhost:54323"
+    echo "  Inbucket (emails): http://localhost:54324"
 }
 
 # Generate database types
