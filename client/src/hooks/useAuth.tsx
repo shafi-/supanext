@@ -10,6 +10,7 @@ interface AuthContextType extends AuthState {
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: string | null }>
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -60,12 +61,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const resetPassword = useCallback(async (email: string) => {
-    const { error } = await supabaseManager.getClient().auth.resetPasswordForEmail(email)
+    const { error } = await supabaseManager.getClient().auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password/`,
+    })
+    return { error: error?.message ?? null }
+  }, [])
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabaseManager.getClient().auth.updateUser({ password: newPassword })
     return { error: error?.message ?? null }
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   )

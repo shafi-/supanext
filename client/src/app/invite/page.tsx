@@ -96,7 +96,21 @@ export default function InvitePage() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">You&apos;ve been invited!</h1>
             <p className="text-gray-600">Sign in to join <strong>{orgName}</strong></p>
-            <Link href="/auth/login" className="bg-blue-600 text-white px-4 py-2 rounded-md inline-block hover:bg-blue-700">Sign in</Link>
+            <Link
+              href={`/auth/login?next=${encodeURIComponent(`/invite?token=${token}`)}`}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md inline-block hover:bg-blue-700"
+            >
+              Sign in
+            </Link>
+            <p className="text-sm text-gray-500">
+              New here?{' '}
+              <Link
+                href={`/auth/register?next=${encodeURIComponent(`/invite?token=${token}`)}`}
+                className="text-blue-600 hover:underline"
+              >
+                Create an account with this email
+              </Link>
+            </p>
           </div>
         )}
         {status === 'valid' && user && (

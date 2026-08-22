@@ -2,12 +2,19 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+
+/** Only allow relative in-app redirect targets (no open redirect). */
+function safeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/dashboard'
+  return raw
+}
 
 export default function LoginPage() {
   const { signIn } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -28,7 +35,7 @@ export default function LoginPage() {
       if (error) {
         setError(error)
       } else {
-        router.push('/dashboard')
+        router.push(safeNextPath(searchParams.get('next')))
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to sign in')
@@ -94,7 +101,7 @@ export default function LoginPage() {
               </label>
             </div>
 
-            <Link href="/auth/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
+            <Link href="/auth/reset-password" className="text-sm text-indigo-600 hover:text-indigo-500">
               Forgot password?
             </Link>
           </div>
