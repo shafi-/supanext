@@ -33,8 +33,14 @@ Accurate snapshot of what this template ships today.
 - `backend/` — shared edge-function business logic
 - `supabase/functions/` — edge functions; add when server-side secrets needed
 
-## Dev-only helpers (never in production)
-`supabase/dev_helpers.sql` defines `set_system_admin`, `reset_development_data`,
+## Email-optional startup mode
+Template ships without SMTP: `enable_confirmations = false`, so signup
+works with no email infrastructure. Abuse control is optional Turnstile
+captcha — set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (client) + `[auth.captcha]`
+secret (Supabase) to enable; empty = disabled. Password reset requires
+SMTP when you turn it on later.
+
+## Dev-only helpers (never in production)`supabase/dev_helpers.sql` defines `set_system_admin`, `reset_development_data`,
 `create_test_user`. Deliberately excluded from `supabase/migrations/` so
 `db push` can never ship them to production — they exist only after manual
 apply to the local DB (`scripts/bootstrap-admin.sh` does this automatically

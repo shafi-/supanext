@@ -4,6 +4,8 @@ import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { Captcha } from '@/components/auth/Captcha'
+import { isCaptchaEnabled } from '@/lib/captcha'
 
 /** Only allow relative in-app redirect targets (no open redirect). */
 function safeNextPath(raw: string | null): string {
@@ -25,8 +27,10 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const captchaEnabled = isCaptchaEnabled()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,11 +41,17 @@ function LoginForm() {
       return
     }
 
+    if (captchaEnabled && !captchaToken) {
+      setError('Please complete the captcha')
+      return
+    }
+
     try {
       setLoading(true)
-      const { error } = await signIn(email, password)
+      const { error } = await signIn(email, password, captchaToken ?? undefined)
       if (error) {
         setError(error)
+        setCaptchaToken(null)
       } else {
         router.push(safeNextPath(searchParams.get('next')))
       }
@@ -113,6 +123,8 @@ function LoginForm() {
               Forgot password?
             </Link>
           </div>
+
+          {captchaEnabled && <Captcha onToken={setCaptchaToken} />}
 
           <button
             type="submit"

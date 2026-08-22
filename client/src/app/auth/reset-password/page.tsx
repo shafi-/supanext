@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { Captcha } from '@/components/auth/Captcha'
+import { isCaptchaEnabled } from '@/lib/captcha'
 
 /**
  * Password reset page with two modes:
@@ -14,10 +16,12 @@ export default function ResetPasswordPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const captchaEnabled = isCaptchaEnabled()
 
   useEffect(() => {
     // Clean up the recovery token from the URL once consumed.
@@ -29,11 +33,21 @@ export default function ResetPasswordPage() {
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (captchaEnabled && !captchaToken) {
+      setError('Please complete the captcha')
+      return
+    }
+
     setSubmitting(true)
-    const { error } = await resetPassword(email)
+    const { error } = await resetPassword(email, captchaToken ?? undefined)
     setSubmitting(false)
-    if (error) setError(error)
-    else setSent(true)
+    if (error) {
+      setError(error)
+      setCaptchaToken(null)
+    } else {
+      setSent(true)
+    }
   }
 
   const handleSetPassword = async (e: React.FormEvent) => {
@@ -136,6 +150,7 @@ export default function ResetPasswordPage() {
           />
         </div>
         {error && <p className="text-red-600 text-sm">{error}</p>}
+        {captchaEnabled && <Captcha onToken={setCaptchaToken} />}
         <button
           type="submit"
           disabled={submitting}

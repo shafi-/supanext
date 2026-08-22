@@ -6,10 +6,10 @@ import { supabaseManager } from '@/lib/supabase'
 import type { AuthState } from '@/types'
 
 interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: string | null }>
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: string | null }>
+  signUp: (email: string, password: string, fullName?: string, captchaToken?: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: string | null }>
+  resetPassword: (email: string, captchaToken?: string) => Promise<{ error: string | null }>
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>
 }
 
@@ -42,16 +42,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabaseManager.getClient().auth.signInWithPassword({ email, password })
+  const signIn = useCallback(async (email: string, password: string, captchaToken?: string) => {
+    const { error } = await supabaseManager.getClient().auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken },
+    })
     return { error: error?.message ?? null }
   }, [])
 
-  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName?: string, captchaToken?: string) => {
     const { error } = await supabaseManager.getClient().auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+        captchaToken,
+      },
     })
     return { error: error?.message ?? null }
   }, [])
@@ -60,9 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabaseManager.getClient().auth.signOut()
   }, [])
 
-  const resetPassword = useCallback(async (email: string) => {
+  const resetPassword = useCallback(async (email: string, captchaToken?: string) => {
     const { error } = await supabaseManager.getClient().auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password/`,
+      captchaToken,
     })
     return { error: error?.message ?? null }
   }, [])

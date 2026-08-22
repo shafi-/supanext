@@ -4,6 +4,8 @@ import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { Captcha } from '@/components/auth/Captcha'
+import { isCaptchaEnabled } from '@/lib/captcha'
 
 /** Only allow relative in-app redirect targets (no open redirect). */
 function safeNextPath(raw: string | null): string {
@@ -27,8 +29,10 @@ function RegisterForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const captchaEnabled = isCaptchaEnabled()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,11 +53,17 @@ function RegisterForm() {
       return
     }
 
+    if (captchaEnabled && !captchaToken) {
+      setError('Please complete the captcha')
+      return
+    }
+
     try {
       setLoading(true)
-      const { error } = await signUp(email, password, fullName || undefined)
+      const { error } = await signUp(email, password, fullName || undefined, captchaToken ?? undefined)
       if (error) {
         setError(error)
+        setCaptchaToken(null)
       } else {
         router.push(safeNextPath(searchParams.get('next')))
       }
@@ -141,6 +151,8 @@ function RegisterForm() {
           <div className="text-sm text-gray-600">
             <p>By creating an account, you agree to our Terms of Service and Privacy Policy.</p>
           </div>
+
+          {captchaEnabled && <Captcha onToken={setCaptchaToken} />}
 
           <button
             type="submit"
