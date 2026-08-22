@@ -804,15 +804,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- CLI/Script helper: set any user as system admin (SECURITY DEFINER — runs outside user context)
-CREATE OR REPLACE FUNCTION set_system_admin(p_user_id UUID)
-RETURNS BOOLEAN AS $$
-BEGIN
-  UPDATE profiles SET is_system_admin = true WHERE id = p_user_id;
-  IF NOT FOUND THEN RAISE EXCEPTION 'User not found'; END IF;
-  RETURN true;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+-- NOTE: set_system_admin(), reset_development_data() and create_test_user()
+-- are intentionally NOT defined in migrations — they are destructive
+-- privilege/data helpers that must never exist in production. They live in
+-- supabase/dev_helpers.sql and are applied manually to local dev only (see
+-- scripts/bootstrap-admin.sh).
 
 -- ====================================================================
 -- AUTH HANDLER (SECURITY DEFINER — trigger runs outside user context)
@@ -941,47 +937,7 @@ GRANT EXECUTE ON FUNCTION grant_system_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION revoke_system_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_system_admins() TO authenticated;
 GRANT EXECUTE ON FUNCTION bootstrap_system_admin() TO authenticated;
-GRANT EXECUTE ON FUNCTION set_system_admin(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION can_perform(TEXT, UUID) TO authenticated;
-
--- ====================================================================
--- DEV HELPER FUNCTIONS (Optional)
--- ====================================================================
-
-CREATE OR REPLACE FUNCTION reset_development_data()
-RETURNS void AS $$
-BEGIN
-  RAISE NOTICE 'Resetting development data...';
-  DELETE FROM audit_logs;
-  DELETE FROM organization_members;
-  DELETE FROM organizations;
-  DELETE FROM profiles;
-  DELETE FROM role_permissions;
-  DELETE FROM roles;
-  RAISE NOTICE 'Development data reset completed';
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-CREATE OR REPLACE FUNCTION create_test_user(
-  test_email TEXT,
-  test_full_name TEXT DEFAULT 'Test User',
-  test_org_name TEXT DEFAULT 'Test Organization'
-)
-RETURNS UUID AS $$
-DECLARE
-  test_user_id UUID;
-  test_org_id UUID;
-BEGIN
-  test_user_id := gen_random_uuid();
-  INSERT INTO profiles (id, email, full_name) VALUES (test_user_id, test_email, test_full_name);
-  INSERT INTO organizations (name, slug)
-  VALUES (test_org_name, lower(regexp_replace(test_org_name, '[^a-zA-Z0-9]+', '-', 'g')))
-  RETURNING id INTO test_org_id;
-  INSERT INTO organization_members (organization_id, user_id, role, status, is_owner, joined_at)
-  VALUES (test_org_id, test_user_id, 'admin', 'active', true, NOW());
-  RETURN test_user_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ====================================================================
 -- MIGRATION COMPLETE
