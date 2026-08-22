@@ -20,10 +20,11 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 - **Supabase**: Database and authentication backend
 - **Function-First Database**: All operations through PostgreSQL functions, no direct table access
 - **Restrictive RLS**: "Deny all" default policies with selective access for complex filtering
-- **Edge Functions**: Cloudflare/Supabase edge functions for auth operations (sign-up, sign-in, password reset)
-- **Service Layer**: Business logic in `/backend` directory, imported by edge functions
-- **Repository Pattern**: BaseRepository with CRUD, extended by feature-specific repositories
+- **Client-Side Auth**: Auth via supabase-js directly (sign-in/sign-up/reset in `useAuth` provider). Edge functions scaffolded in `supabase/functions/` — add only when server-side secrets are needed
+- **Shared Logic**: `/backend` holds business logic shared across edge functions (scaffold, currently empty)
+- **Repository Pattern**: BaseRepository wraps RPC calls, extended by feature-specific repositories
 - **RPC Type Safety**: `Rpc` const in `types/rpc.ts` uses `satisfies DbFunction` to validate function names against `database.ts` at compile time. Services use nested `Rpc.Group.Action` pattern (e.g., `Rpc.Todo.Create`).
+- **Explicit Grant Surface**: `REVOKE ... FROM PUBLIC` + explicit GRANTs at the end of the security hardening migration declare the full callable API. New RPCs must be added there.
 
 ### Database Architecture Philosophy
 The project treats PostgreSQL as an application backend, not just data storage:
@@ -47,11 +48,12 @@ See `/supabase/README.md` for detailed database architecture documentation.
 /project-root/
 ├── docs/              # Documentation
 ├── client/            # NextJS frontend application
-├── backend/           # Edge function business logic (shared with edge functions)
-├── supabase/          # Database migrations and edge functions
+├── backend/           # Shared edge-function business logic (scaffold, currently empty)
+├── supabase/          # Database migrations, tests, and edge functions
 │   ├── migrations/    # SQL schema migrations
-│   └── functions/     # Edge functions (sign-up, sign-in, password reset)
-└── tests/             # E2E and unit tests
+│   ├── tests/         # pgTAP database tests (psql)
+│   └── functions/     # Edge functions (scaffold — add when server-side secrets needed)
+└── scripts/           # setup.sh, bootstrap-admin.sh
 ```
 
 ## Key Architectural Patterns
@@ -73,7 +75,7 @@ See `/supabase/README.md` for detailed database architecture documentation.
 - Services are pure functions or classes with methods (no state)
 
 ### Auth Flow
-- Edge functions handle: sign-up, sign-in, password reset
+- Client-side supabase-js handles: sign-up, sign-in, password reset (via `useAuth` provider)
 - Frontend uses custom hooks: `useAuth()`, `useRequireAuth()`, `useHasRole()`
 - Auth provider wraps application, manages auth state
 - Unauthorized access redirects to login or shows access denied
