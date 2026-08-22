@@ -8,8 +8,11 @@ import type {
 import { Rpc } from '@/types/rpc'
 
 export class SubscriptionPlanService extends BaseRepository {
-  async getPlans(): ServiceData<SubscriptionPlan[]> {
-    return this.callRpc<SubscriptionPlan[]>(Rpc.Subscription.GetPlans)
+  /** Active plans for everyone; system admins may include inactive plans. */
+  async getPlans(includeInactive = false): ServiceData<SubscriptionPlan[]> {
+    return this.callRpc<SubscriptionPlan[]>(Rpc.Subscription.GetPlans, {
+      p_include_inactive: includeInactive,
+    })
   }
 
   async createPlan(

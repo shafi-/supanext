@@ -23,7 +23,7 @@ export default function AdminPlansPage() {
   const [saving, setSaving] = useState(false)
 
   const loadPlans = useCallback(async () => {
-    const { data } = await subscriptionPlanService.getPlans()
+    const { data } = await subscriptionPlanService.getPlans(true)
     if (data) setPlans(data as unknown as SubscriptionPlan[])
     setLoading(false)
   }, [])
