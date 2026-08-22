@@ -10,12 +10,26 @@ import { organizationService } from '@/services/OrganizationService'
 import { todoService } from '@/services/TodoService'
 import { memberService } from '@/services/MemberService'
 import { inviteService } from '@/services/InviteService'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import type { Todo, MemberView, Invite } from '@/types'
 import { BillingTab } from '@/components/subscription/BillingTab'
 
 export default function OrgsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppLayout>
+          <div className="max-w-4xl mx-auto py-12 text-gray-500">Loading...</div>
+        </AppLayout>
+      }
+    >
+      <OrgsContent />
+    </Suspense>
+  )
+}
+
+function OrgsContent() {
   useRequireAuth()
   const orgId = useRequiredParam('id')
   const { currentOrg, setCurrentOrg, loading: orgLoading } = useOrganization()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRequiredParam, isInviteToken } from '@/hooks/useQueryParam'
 import { inviteService } from '@/services/InviteService'
@@ -11,6 +11,20 @@ import Link from 'next/link'
 type Status = 'loading' | 'valid' | 'invalid' | 'expired' | 'accepted' | 'error'
 
 export default function InvitePage() {
+  return (
+    <Suspense
+      fallback={
+        <AppLayout>
+          <div className="max-w-md mx-auto text-center py-12 text-gray-500">Loading...</div>
+        </AppLayout>
+      }
+    >
+      <InviteContent />
+    </Suspense>
+  )
+}
+
+function InviteContent() {
   const token = useRequiredParam('token')
   const router = useRouter()
   const { user } = useAuth()
