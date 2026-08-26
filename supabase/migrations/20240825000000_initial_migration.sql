@@ -1531,6 +1531,61 @@ as $$
   ) x;
 $$;
 
+-- Sysadmin listings backing the admin console.
+create or replace function api.list_all_organizations(p_limit int default 200)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', o.id, 'name', o.name, 'slug', o.slug, 'status', o.status,
+      'suspension_note', case when o.status='suspended' then o.suspension_note end,
+      'created_at', o.created_at
+    ) order by o.created_at desc)
+    from (
+      select * from app.organizations
+      order by created_at desc
+      limit least(greatest(coalesce(p_limit,200),1),500)
+    ) o
+  ), '[]'::jsonb);
+end;
+$$;
+
+create or replace function api.list_plans()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', sp.id, 'code', sp.code, 'name', sp.name, 'description', sp.description,
+      'price_minor', sp.price_minor, 'currency', sp.currency,
+      'billing_interval', sp.billing_interval, 'is_active', sp.is_active,
+      'features', coalesce((
+        select jsonb_agg(f.code order by f.code)
+        from app.plan_features pf join app.features f on f.id=pf.feature_id
+        where pf.plan_id=sp.id),'[]'::jsonb)
+    ) order by sp.price_minor, sp.name)
+    from app.subscription_plans sp
+  ), '[]'::jsonb);
+end;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- API: fundraising campaigns
 -- -----------------------------------------------------------------------------
@@ -1857,6 +1912,8 @@ grant execute on function api.update_my_profile(text, text) to authenticated;
 grant execute on function api.get_invitation_preview(text) to anon, authenticated;
 grant execute on function api.list_public_organizations(int) to anon, authenticated;
 
+grant execute on function api.list_all_organizations(int) to authenticated;
+grant execute on function api.list_plans() to authenticated;
 grant execute on function api.get_session_context() to authenticated;
 grant execute on function api.set_active_organization(uuid) to authenticated;
 grant execute on function api.get_my_organizations() to authenticated;

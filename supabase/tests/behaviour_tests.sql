@@ -835,6 +835,46 @@ select tests.ok(
 select tests.reset_actor();
 
 -- =============================================================================
+-- ACT 10 — sysadmin console listings
+-- =============================================================================
+select tests.become((select id from _uid where who='alice'));
+select tests.run_sql('select api.list_all_organizations(null)',
+  'sysadmin: list_all_organizations succeeds');
+select tests.ok(
+  (select tests.scalar(
+    $t$select exists (
+      select 1 from jsonb_array_elements(api.list_all_organizations(null)) org
+      where org->>'slug'='acme'
+    )$t$) = 'true'),
+  'sysadmin: directory includes acme');
+select tests.ok(
+  (select tests.scalar(
+    $t$select exists (
+      select 1
+      from jsonb_array_elements(api.list_all_organizations(null)) org
+      where org->>'slug'='acme' and org ? 'id' and not org ? 'created_by'
+    )$t$) = 'true'),
+  'sysadmin: listing key-whitelisted (no created_by leak)');
+select tests.run_sql('select api.list_plans()',
+  'sysadmin: list_plans succeeds');
+select tests.ok(
+  (select tests.scalar(
+    $t$select exists (
+      select 1 from jsonb_array_elements(api.list_plans()) plan
+      where plan->>'code'='basic' and plan->'features' ? 'fundraising'
+    )$t$) = 'true'),
+  'sysadmin: basic plan listed with fundraising feature');
+
+-- non-sysadmin denied both listings (carol: plain authenticated user).
+select tests.become((select id from _uid where who='carol'));
+select tests.throws('select api.list_all_organizations(null)', '42501',
+  'org-admin: list_all_organizations denied');
+select tests.throws('select api.list_plans()', '42501',
+  'org-admin: list_plans denied');
+
+select tests.reset_actor();
+
+-- =============================================================================
 -- Final report
 -- =============================================================================
 select tests.reset_actor();
