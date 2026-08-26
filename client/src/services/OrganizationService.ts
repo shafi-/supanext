@@ -13,6 +13,7 @@ export interface SessionOrganization {
 
 export interface SessionContext {
   user_id: string
+  display_name: string
   is_system_admin: boolean
   active_organization_id: string | null
   organizations: SessionOrganization[]

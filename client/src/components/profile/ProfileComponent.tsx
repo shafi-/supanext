@@ -1,25 +1,30 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { UserProfile } from '@/types'
 
 interface ProfileComponentProps {
   email?: string
-  orgName?: string
-  profile: UserProfile | null
-  loading: boolean
+  orgName?: string | null
+  displayName: string | null
+  loading?: boolean
   saving: boolean
-  onSave: (fullName: string) => void
+  onSave: (displayName: string, avatarUrl?: string) => void
 }
 
-export function ProfileComponent({ email, orgName, profile, loading, saving, onSave }: ProfileComponentProps) {
-  const [fullName, setFullName] = useState('')
+export function ProfileComponent({
+  email,
+  orgName,
+  displayName,
+  saving,
+  onSave,
+}: ProfileComponentProps) {
+  const [name, setName] = useState(displayName ?? '')
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    if (profile) setFullName(profile.full_name ?? '')
-  }, [profile])
-
-  if (loading) return <div>Loading...</div>
+    if (displayName !== null) setName(displayName)
+  }, [displayName])
 
   return (
     <div className="space-y-6">
@@ -30,24 +35,39 @@ export function ProfileComponent({ email, orgName, profile, loading, saving, onS
           <p className="mt-1 text-gray-900">{email}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Full Name</label>
+          <label className="block text-sm font-medium text-gray-700">Display Name</label>
           <input
             type="text"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={100}
             className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Organization</label>
+          <label className="block text-sm font-medium text-gray-700">Avatar URL</label>
+          <input
+            type="url"
+            placeholder="https://…"
+            value={avatarUrl}
+            onChange={(e) => setAvatarUrl(e.target.value)}
+            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Active Organization</label>
           <p className="mt-1 text-gray-900">{orgName ?? 'None'}</p>
         </div>
         <button
-          onClick={() => onSave(fullName)}
+          onClick={() => {
+            onSave(name, avatarUrl.trim() || undefined)
+            setSaved(true)
+            setTimeout(() => setSaved(false), 2000)
+          }}
           disabled={saving}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Save'}
+          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
         </button>
       </div>
     </div>

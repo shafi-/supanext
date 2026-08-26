@@ -651,6 +651,9 @@ begin
 
   return jsonb_build_object(
     'user_id', v_user_id,
+    'display_name', coalesce((
+      select pr.display_name from app.profiles pr where pr.id = v_user_id
+    ), ''),
     'is_system_admin', security.is_system_admin(),
     'active_organization_id', case when v_active_valid then v_active else null end,
     'organizations', v_orgs

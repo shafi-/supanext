@@ -11,6 +11,7 @@ import {
 import { organizationService, type SessionOrganization } from '@/services/OrganizationService'
 
 interface OrganizationContextType {
+  displayName: string | null
   /** All organizations the user belongs to. */
   organizations: SessionOrganization[]
   /** The active organization (server-truth via get_session_context). */
@@ -25,6 +26,7 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined)
 
 export function OrganizationProvider({ children }: { children: React.ReactNode }) {
+  const [displayName, setDisplayName] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<SessionOrganization[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,6 +40,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     if (data) {
       setOrganizations(data.organizations ?? [])
       setActiveId(data.active_organization_id)
+      setDisplayName(data.display_name || null)
     }
     setLoading(false)
   }, [])
@@ -71,7 +74,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   return (
     <OrganizationContext.Provider
-      value={{ organizations, currentOrg, membership, loading, error, switchOrg, refresh }}
+      value={{ displayName, organizations, currentOrg, membership, loading, error, switchOrg, refresh }}
     >
       {children}
     </OrganizationContext.Provider>
