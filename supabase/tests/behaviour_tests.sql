@@ -865,12 +865,19 @@ select tests.ok(
     )$t$) = 'true'),
   'sysadmin: basic plan listed with fundraising feature');
 
+select tests.ok(
+  (select tests.scalar(
+    $t$select api.find_user_id_by_email('bob@example.com')$t$
+  ) = '22222222-2222-4222-8222-222222222222'),
+  'sysadmin: find_user_id_by_email resolves known user');
 -- non-sysadmin denied both listings (carol: plain authenticated user).
 select tests.become((select id from _uid where who='carol'));
 select tests.throws('select api.list_all_organizations(null)', '42501',
   'org-admin: list_all_organizations denied');
 select tests.throws('select api.list_plans()', '42501',
   'org-admin: list_plans denied');
+select tests.throws($t$select api.find_user_id_by_email('bob@example.com')$t$,
+  '42501', 'org-admin: find_user_id_by_email denied');
 
 select tests.reset_actor();
 

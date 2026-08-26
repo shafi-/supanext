@@ -55,6 +55,7 @@ export const Rpc = {
     Delete: 'delete_campaign' satisfies DbFunction,
   },
   Admin: {
+    FindUserByEmail: 'find_user_id_by_email' satisfies DbFunction,
     ListAllOrgs: 'list_all_organizations' satisfies DbFunction,
     ListPlans: 'list_plans' satisfies DbFunction,
   },

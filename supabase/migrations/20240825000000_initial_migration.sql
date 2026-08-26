@@ -1562,6 +1562,29 @@ begin
 end;
 $$;
 
+-- Sysadmin-only: resolve a user id from email (admin management UI).
+create or replace function api.find_user_id_by_email(p_email text)
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select u.id into v_user_id
+  from auth.users u
+  where lower(u.email) = lower(btrim(p_email))
+  limit 1;
+
+  return v_user_id; -- null when no such user
+end;
+$$;
 create or replace function api.list_plans()
 returns jsonb
 language plpgsql
@@ -1915,6 +1938,7 @@ grant execute on function api.update_my_profile(text, text) to authenticated;
 grant execute on function api.get_invitation_preview(text) to anon, authenticated;
 grant execute on function api.list_public_organizations(int) to anon, authenticated;
 
+grant execute on function api.find_user_id_by_email(text) to authenticated;
 grant execute on function api.list_all_organizations(int) to authenticated;
 grant execute on function api.list_plans() to authenticated;
 grant execute on function api.get_session_context() to authenticated;

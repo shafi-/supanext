@@ -34,6 +34,11 @@ export class AdminService extends BaseRepository {
     return this.callRpc<void>(Rpc.SystemAdmin.Revoke, { p_user_id: userId })
   }
 
+  /** Resolves a user id from email; null when unknown. Sysadmin-only. */
+  async findUserIdByEmail(email: string): ServiceData<string | null> {
+    return this.callRpc<string | null>(Rpc.Admin.FindUserByEmail, { p_email: email })
+  }
+
   // -- console listings ---------------------------------------------------------
   async listAllOrganizations(limit = 200): ServiceData<
     Array<{ id: string; name: string; slug: string; status: string; suspension_note: string | null; created_at: string }>
