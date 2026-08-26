@@ -11,6 +11,7 @@ import { memberService } from '@/services/MemberService'
 import { inviteService, type InvitationPayload } from '@/services/InviteService'
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { BillingTab } from '@/components/subscription/BillingTab'
+import { campaignService, type Campaign } from '@/services/CampaignService'
 import Link from 'next/link'
 
 export default function OrgsPage() {
@@ -133,7 +134,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`px-2 py-0.5 rounded-full text-xs ${cls}`}>{status}</span>
 }
 
-type Tab = 'overview' | 'members' | 'invites' | 'billing'
+type Tab = 'overview' | 'campaigns' | 'members' | 'invites' | 'billing'
 
 function OrgDetail({ orgId }: { orgId: string }) {
   const { currentOrg } = useOrganization()
@@ -161,6 +162,12 @@ function OrgDetail({ orgId }: { orgId: string }) {
           className={`pb-2 whitespace-nowrap ${tab === 'overview' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>
           Overview
         </button>
+        {fundraisingEnabled && (
+          <button onClick={() => setTab('campaigns')}
+            className={`pb-2 whitespace-nowrap ${tab === 'campaigns' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>
+            Campaigns
+          </button>
+        )}
         <button onClick={() => setTab('members')} disabled={!fundraisingEnabled}
           className={`pb-2 whitespace-nowrap ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''} ${!fundraisingEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
           Members
@@ -177,6 +184,7 @@ function OrgDetail({ orgId }: { orgId: string }) {
         </button>
       </div>
       {tab === 'overview' && <OverviewTab orgId={orgId} />}
+      {tab === 'campaigns' && fundraisingEnabled && <CampaignsTab orgId={orgId} />}
       {tab === 'members' && fundraisingEnabled && <MembersTab orgId={orgId} />}
       {tab === 'invites' && isOrgAdmin() && fundraisingEnabled && <InvitesTab orgId={orgId} />}
       {tab === 'billing' && <BillingReadonly orgId={orgId} />}
@@ -377,4 +385,105 @@ function InvitesTab({ orgId }: { orgId: string }) {
 function BillingReadonly({ orgId }: { orgId: string }) {
   const { subscription, loading, error } = useSubscription(orgId)
   return <BillingTab subscription={subscription} loading={loading} error={error} />
+}
+
+function CampaignsTab({ orgId }: { orgId: string }) {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ name: '', description: '', goal: '' })
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data, error: err } = await campaignService.listCampaigns(orgId)
+    if (data) setCampaigns(data)
+    if (err) setError(err)
+    setLoading(false)
+  }, [orgId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name.trim()) return
+    setSaving(true)
+    const { error: err } = await campaignService.createCampaign({
+      name: form.name.trim(),
+      description: form.description.trim() || undefined,
+      goalMinor: form.goal ? parseInt(form.goal) : undefined,
+      orgId,
+    })
+    setSaving(false)
+    if (err) {
+      setError(err)
+      return
+    }
+    setForm({ name: '', description: '', goal: '' })
+    setShowForm(false)
+    await load()
+  }
+
+  const handleDelete = async (id: string) => {
+    const { error: err } = await campaignService.deleteCampaign(id)
+    if (err) setError(err)
+    await load()
+  }
+
+  return (
+    <div className="space-y-4 max-w-3xl">
+      {error && <p className="text-red-600">{error}</p>}
+      <button onClick={() => setShowForm(!showForm)}
+        className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+        {showForm ? 'Cancel' : 'New Campaign'}
+      </button>
+
+      {showForm && (
+        <form onSubmit={handleCreate} className="bg-white p-4 rounded-lg shadow space-y-3">
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Campaign name" className="w-full border rounded-md px-3 py-2 text-sm" />
+          <textarea value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Description" rows={2}
+            className="w-full border rounded-md px-3 py-2 text-sm" />
+          <div className="flex gap-2 items-center">
+            <input value={form.goal} type="number" min="0"
+              onChange={(e) => setForm({ ...form, goal: e.target.value })}
+              placeholder="Goal (minor units)" className="border rounded-md px-3 py-1.5 text-sm w-48" />
+            <span className="text-xs text-gray-400">optional</span>
+            <button type="submit" disabled={saving}
+              className="ml-auto px-3 py-1.5 bg-green-600 text-white rounded-md text-sm disabled:opacity-50">
+              {saving ? 'Saving…' : 'Create'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <ul className="space-y-2">
+          {campaigns.map((c) => (
+            <li key={c.id} className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
+              <div className="flex-1">
+                <p className="font-medium">{c.name}</p>
+                {c.description && <p className="text-sm text-gray-500">{c.description}</p>}
+                <p className="text-xs text-gray-400 mt-1">
+                  {c.goal_minor != null && `Goal: ${(c.goal_minor / 100).toFixed(2)} ${c.currency}`}
+                  {' · '}
+                  Created {new Date(c.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <button onClick={() => handleDelete(c.id)}
+                className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+            </li>
+          ))}
+          {campaigns.length === 0 && <p className="text-gray-500">No campaigns yet.</p>}
+        </ul>
+      )}
+    </div>
+  )
 }

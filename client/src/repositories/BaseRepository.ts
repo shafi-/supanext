@@ -1,6 +1,6 @@
 import { supabaseManager } from '@/lib/supabase'
 import type { ServiceData } from '@/types'
-import { Rpc, type RpcFunction } from '@/types/rpc'
+import type { RpcFunction } from '@/types/rpc'
 
 /**
  * Base Repository Class
