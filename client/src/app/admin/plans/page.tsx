@@ -176,7 +176,7 @@ function FeatureToggle({ planId, onDone }: { planId: string; onDone: () => Promi
         className="border rounded px-1.5 py-1 text-xs w-28" />
       <button onClick={async () => {
         if (!code.trim()) return
-        // toggle semantics: enable when absent, disable when present in plan
+        // enable feature on this plan (idempotent — already-enabled is a no-op)
         void adminService.setPlanFeature(planId, code.trim(), true).then(onDone)
         setCode('')
       }} className="text-blue-600 text-xs hover:text-blue-800">enable</button>
