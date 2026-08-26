@@ -3,7 +3,6 @@
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useRequireAuth } from '@/hooks/useAuth'
 import { useOrganization } from '@/hooks/useOrganization'
-import { usePermissions } from '@/hooks/usePermissions'
 import { useRequiredParam, isUuid } from '@/hooks/useQueryParam'
 import { useSubscription } from '@/hooks/useSubscription'
 import {
