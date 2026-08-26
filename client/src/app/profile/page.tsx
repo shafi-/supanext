@@ -31,14 +31,15 @@ function ProfileContent() {
     if (sessionName !== null) setDisplayName(sessionName)
   }, [sessionName])
 
-  const handleSave = async (name: string, avatarUrl?: string) => {
+  const handleSave = async (name: string, avatarUrl?: string): Promise<boolean> => {
     setError(null)
     const { data, error: err } = await updateProfile(name || undefined, avatarUrl)
     if (err) {
       setError(err)
-      return
+      return false
     }
     if (data) setDisplayName(data.display_name)
+    return true
   }
 
   return (

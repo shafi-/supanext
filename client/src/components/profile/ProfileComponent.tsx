@@ -8,7 +8,7 @@ interface ProfileComponentProps {
   displayName: string | null
   loading?: boolean
   saving: boolean
-  onSave: (displayName: string, avatarUrl?: string) => void
+  onSave: (displayName: string, avatarUrl?: string) => Promise<boolean>
 }
 
 export function ProfileComponent({
@@ -59,10 +59,12 @@ export function ProfileComponent({
           <p className="mt-1 text-gray-900">{orgName ?? 'None'}</p>
         </div>
         <button
-          onClick={() => {
-            onSave(name, avatarUrl.trim() || undefined)
-            setSaved(true)
-            setTimeout(() => setSaved(false), 2000)
+          onClick={async () => {
+            const ok = await onSave(name, avatarUrl.trim() || undefined)
+            if (ok) {
+              setSaved(true)
+              setTimeout(() => setSaved(false), 2000)
+            }
           }}
           disabled={saving}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
