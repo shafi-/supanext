@@ -55,12 +55,12 @@ export default function DashboardPage() {
           <p className="mt-2 text-gray-600">Welcome back, {user?.email}!</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">My Organizations</h3>
             <p className="text-gray-600 mb-4">Manage your organizations and team members.</p>
             <Link
-              href="/organizations"
+              href="/orgs"
               className="text-indigo-600 hover:text-indigo-700 font-medium"
             >
               View Organizations →
@@ -75,17 +75,6 @@ export default function DashboardPage() {
               className="text-indigo-600 hover:text-indigo-700 font-medium"
             >
               Update Profile →
-            </Link>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
-            <p className="text-gray-600 mb-4">Manage your password and security settings.</p>
-            <Link
-              href="/security"
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
-            >
-              Security Settings →
             </Link>
           </div>
         </div>
