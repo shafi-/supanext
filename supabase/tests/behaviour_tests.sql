@@ -767,6 +767,74 @@ select tests.ok(
   'client-helper: granted security.has_feature callable by authenticated');
 
 -- =============================================================================
+-- ACT 9 — public surface (anon-reachable)
+-- =============================================================================
+
+-- Fixture: fresh pending invitation for heidi into acme.
+select tests.become((select id from _uid where who='bob'));
+insert into _ctx
+  select 'inv_heidi',
+         tests.scalar(
+           $t$select api.invite_member('heidi@example.com','member',null)::text$t$);
+
+-- B: invitation preview for valid pending token.
+select tests.become_anon();
+select tests.ok(
+  (select tests.scalar(
+    $t$select api.get_invitation_preview(tests.ctx('inv_heidi')::jsonb->>'token')->>'org_name'$t$
+  ) = 'Acme Corp'),
+  'public: invitation preview resolves org name');
+select tests.ok(
+  (select tests.scalar(
+    $t$select api.get_invitation_preview(tests.ctx('inv_heidi')::jsonb->>'token')->>'role'$t$
+  ) = 'member'),
+  'public: invitation preview exposes role');
+
+-- Preview rejects every consumed state.
+select tests.throws(
+  $t$select api.get_invitation_preview(tests.ctx('inv_carol')::jsonb->>'token')$t$, '22023',
+  'public: accepted invitation cannot be previewed');
+select tests.throws(
+  $t$select api.get_invitation_preview(tests.ctx('inv_grace')::jsonb->>'token')$t$, '22023',
+  'public: expired invitation cannot be previewed');
+select tests.throws(
+  $t$select api.get_invitation_preview(tests.ctx('inv_ivy')::jsonb->>'token')$t$, '22023',
+  'public: revoked invitation cannot be previewed');
+select tests.throws(
+  $t$select api.get_invitation_preview(repeat('f',64))$t$, '22023',
+  'public: garbage token cannot be previewed');
+
+-- C: public directory via anon.
+select tests.ok(
+  (select tests.scalar(
+    $t$select exists (
+      select 1 from jsonb_array_elements(api.list_public_organizations(null)) org
+      where org->>'slug'='acme' and org->>'status'='active'
+        and (org->>'member_count')::int >= 1
+    )$t$) = 'true'),
+  'public: directory lists active acme with member counts');
+select tests.ok(
+  (select tests.scalar(
+    $t$select not exists (
+      select 1 from jsonb_array_elements(api.list_public_organizations(null)) org
+      where org->>'slug' in ('charityc')
+    )$t$) = 'true'),
+  'public: rejected org absent from directory');
+select tests.ok(
+  (select tests.scalar(
+    $t$select (
+      select bool_and(org ?& array['name','slug','status','member_count','campaign_count','created_at'])
+        and not bool_and(org ?| array['suspension_note','email','id'])
+      from jsonb_array_elements(api.list_public_organizations(null)) org
+    )$t$) = 'true'),
+  'public: directory responses are key-whitelisted');
+select tests.ok(
+  (select jsonb_array_length((api.list_public_organizations(1))::jsonb)) = 1,
+  'public: limit parameter respected');
+
+select tests.reset_actor();
+
+-- =============================================================================
 -- Final report
 -- =============================================================================
 select tests.reset_actor();

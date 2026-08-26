@@ -1457,6 +1457,81 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------
+-- API: public surface (anon-reachable, key-whitelisted responses)
+--
+-- Two deliberate exposure points:
+--   get_invitation_preview     — invite-link landing UX; the pending token is
+--                                itself the credential.
+--   list_public_organizations  — public directory of active+suspended orgs;
+--                                aggregate counts only, never private columns
+--                                or notes. Pending/rejected orgs invisible.
+-- -----------------------------------------------------------------------------
+create or replace function api.get_invitation_preview(p_token text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_result jsonb;
+begin
+  if p_token is null or length(btrim(p_token)) = 0 then
+    raise exception using errcode = '22023', message = 'Invitation is invalid or expired';
+  end if;
+
+  select jsonb_build_object(
+    'org_name', o.name,
+    'org_slug', o.slug,
+    'role', i.role,
+    'inviter_name', coalesce(pr.display_name, ''),
+    'expires_at', i.expires_at
+  ) into v_result
+  from app.organization_invitations i
+  join app.organizations o on o.id = i.organization_id
+  left join app.profiles pr on pr.id = i.invited_by
+  where i.token_hash = security.token_digest(p_token)
+    and i.status = 'pending'
+    and i.expires_at > now();
+
+  if v_result is null then
+    raise exception using errcode = '22023', message = 'Invitation is invalid or expired';
+  end if;
+
+  return v_result;
+end;
+$$;
+
+create or replace function api.list_public_organizations(p_limit int default 50)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'name', x.name,
+      'slug', x.slug,
+      'status', x.status,
+      'member_count', x.member_count,
+      'campaign_count', x.campaign_count,
+      'created_at', x.created_at
+    ) order by x.name), '[]'::jsonb)
+  from (
+    select o.name, o.slug, o.status, o.created_at,
+      (select count(*) from app.organization_members m
+        where m.organization_id = o.id)::int as member_count,
+      (select count(*) from app.fundraising_campaigns c
+        where c.organization_id = o.id)::int as campaign_count
+    from app.organizations o
+    where o.status in ('active', 'suspended')
+    limit least(greatest(coalesce(p_limit, 50), 1), 200)
+  ) x;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- API: fundraising campaigns
 -- -----------------------------------------------------------------------------
 create or replace function api.list_campaigns(p_org_id uuid default null)
@@ -1777,6 +1852,11 @@ grant execute on function api.bootstrap_system_admin() to service_role;
 
 -- Explicit api grant surface.
 grant execute on function api.update_my_profile(text, text) to authenticated;
+
+-- Public surface: the only functions anon may ever reach.
+grant execute on function api.get_invitation_preview(text) to anon, authenticated;
+grant execute on function api.list_public_organizations(int) to anon, authenticated;
+
 grant execute on function api.get_session_context() to authenticated;
 grant execute on function api.set_active_organization(uuid) to authenticated;
 grant execute on function api.get_my_organizations() to authenticated;
