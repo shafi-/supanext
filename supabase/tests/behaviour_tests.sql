@@ -217,6 +217,37 @@ select tests.ok(
   'sysadmin: alice recognised as system admin');
 
 -- =============================================================================
+-- ACT 1.5 — profile self-management
+-- =============================================================================
+select tests.become((select id from _uid where who='bob'));
+select tests.run_sql(
+  $t$select api.update_my_profile('Bobby Tables','https://cdn.example/bob.png')$t$,
+  'profile: update display name and avatar');
+select tests.ok(
+  (select tests.scalar(
+    $t$select (api.update_my_profile(null,null))->>'display_name'$t$) = 'Bobby Tables'),
+  'profile: blank/null args preserve existing values');
+select tests.throws(
+  $t$select api.update_my_profile(repeat('x',120),null)$t$, '22023',
+  'profile: oversized display name rejected');
+select tests.throws(
+  $t$select api.update_my_profile('ok','ftp://bad')$t$, '22023',
+  'profile: non-http avatar URL rejected');
+select tests.reset_actor();
+select tests.ok(
+  exists (
+    select 1 from app.profiles pr
+    join auth.users u on u.id=pr.id
+    where lower(u.email)='bob@example.com'
+      and pr.display_name='Bobby Tables'
+      and pr.avatar_url='https://cdn.example/bob.png'
+  ),
+  'profile: changes persisted');
+select tests.ok(
+  exists (select 1 from app.audit_log where action='profile.updated'),
+  'audit: profile update recorded');
+
+-- =============================================================================
 -- ACT 2 — organization request / approval lifecycle
 -- =============================================================================
 

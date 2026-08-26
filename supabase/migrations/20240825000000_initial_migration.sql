@@ -548,6 +548,59 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
+-- API: profile self-management
+create or replace function api.update_my_profile(
+  p_display_name text default null,
+  p_avatar_url text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_name text := nullif(trim(p_display_name), '');
+  v_result jsonb;
+begin
+  if v_user_id is null then
+    raise exception using errcode = '28000', message = 'Not authenticated';
+  end if;
+
+  if v_name is not null and length(v_name) > 100 then
+    raise exception using errcode = '22023', message = 'Display name too long (max 100)';
+  end if;
+
+  if p_avatar_url is not null
+     and p_avatar_url !~* '^https?://[^\s]+$' then
+    raise exception using errcode = '22023', message = 'Avatar URL must be an http(s) URL';
+  end if;
+
+  update app.profiles
+  set display_name = coalesce(v_name, display_name),
+      avatar_url   = coalesce(p_avatar_url, avatar_url)
+  where id = v_user_id;
+
+  if not found then
+    raise exception using errcode = '22023', message = 'Profile not found';
+  end if;
+
+  insert into app.audit_log(actor_user_id, action, entity_type, entity_id)
+  values (v_user_id, 'profile.updated', 'user', v_user_id);
+
+  select jsonb_build_object(
+    'id', pr.id,
+    'display_name', pr.display_name,
+    'avatar_url', pr.avatar_url,
+    'active_organization_id', pr.active_organization_id
+  ) into v_result
+  from app.profiles pr where pr.id = v_user_id;
+
+  return v_result;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- API: session / organization context
 -- -----------------------------------------------------------------------------
 create or replace function api.get_session_context()
@@ -1723,6 +1776,7 @@ revoke execute on function api.bootstrap_system_admin() from public, anon, authe
 grant execute on function api.bootstrap_system_admin() to service_role;
 
 -- Explicit api grant surface.
+grant execute on function api.update_my_profile(text, text) to authenticated;
 grant execute on function api.get_session_context() to authenticated;
 grant execute on function api.set_active_organization(uuid) to authenticated;
 grant execute on function api.get_my_organizations() to authenticated;
