@@ -102,6 +102,11 @@ describe('service → rpc arg mapping', () => {
     })
   })
 
+  it('OrganizationService.getOrganizationStatus passes p_org_id', async () => {
+    await organizationService.getOrganizationStatus(ORG)
+    expect(rpcMock).toHaveBeenCalledWith('get_organization_status', { p_org_id: ORG })
+  })
+
   it('CampaignService.createCampaign omits unset optionals', async () => {
     await campaignService.createCampaign({ name: 'C', orgId: ORG })
     expect(rpcMock).toHaveBeenCalledWith('create_campaign', {

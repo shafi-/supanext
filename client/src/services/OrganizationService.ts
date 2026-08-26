@@ -53,8 +53,8 @@ export class OrganizationService extends BaseRepository {
     return this.callRpc(Rpc.Session.SetActiveOrg, { p_org_id: orgId })
   }
 
-  async getOrganizationStatus(): ServiceData<OrganizationStatus> {
-    return this.callRpc<OrganizationStatus>(Rpc.Org.GetStatus)
+  async getOrganizationStatus(orgId?: string): ServiceData<OrganizationStatus> {
+    return this.callRpc<OrganizationStatus>(Rpc.Org.GetStatus, { p_org_id: orgId })
   }
 
   /** Anonymous-safe public directory (active + suspended orgs). */

@@ -233,7 +233,7 @@ function OverviewTab({ orgId }: { orgId: string }) {
   const [status, setStatus] = useState<OrganizationStatus | null>(null)
 
   useEffect(() => {
-    organizationService.getOrganizationStatus().then(({ data }) => {
+    organizationService.getOrganizationStatus(orgId).then(({ data }) => {
       if (data) setStatus(data)
     })
   }, [orgId])

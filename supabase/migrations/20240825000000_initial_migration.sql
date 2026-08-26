@@ -844,7 +844,7 @@ begin
 end;
 $$;
 
-create or replace function api.get_organization_status()
+create or replace function api.get_organization_status(p_org_id uuid default null)
 returns jsonb
 language sql
 stable
@@ -858,7 +858,7 @@ as $$
     'suspension_note', case when o.status = 'suspended' then o.suspension_note else null end
   )
   from app.organizations o
-  join security.has_role_in_active_org(null) h on h.organization_id = o.id
+  join security.has_role_in_active_org(p_org_id) h on h.organization_id = o.id
   where h.org_status <> 'rejected';
 $$;
 
@@ -1934,6 +1934,12 @@ grant execute on function api.bootstrap_system_admin() to service_role;
 -- Explicit api grant surface.
 grant execute on function api.update_my_profile(text, text) to authenticated;
 
+-- USAGE on app is required by PostgREST to resolve argument types
+-- (e.g. app.subscription_status) in json_to_record under the calling role.
+-- Table/object privileges above remain fully revoked, so this exposes
+-- catalog names only.
+grant usage on schema app to anon, authenticated;
+
 -- Public surface: the only functions anon may ever reach.
 grant execute on function api.get_invitation_preview(text) to anon, authenticated;
 grant execute on function api.list_public_organizations(int) to anon, authenticated;
@@ -1949,7 +1955,7 @@ grant execute on function api.approve_organization(uuid) to authenticated;
 grant execute on function api.reject_organization(uuid, text) to authenticated;
 grant execute on function api.suspend_organization(uuid, text) to authenticated;
 grant execute on function api.unsuspend_organization(uuid) to authenticated;
-grant execute on function api.get_organization_status() to authenticated;
+grant execute on function api.get_organization_status(uuid) to authenticated;
 grant execute on function api.invite_member(text, app.organization_role, uuid) to authenticated;
 grant execute on function api.accept_invitation(text) to authenticated;
 grant execute on function api.revoke_invitation(uuid) to authenticated;
