@@ -6,6 +6,7 @@ import { useOrganization } from '@/hooks/useOrganization'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useRequiredParam, isUuid } from '@/hooks/useQueryParam'
 import { useSubscription } from '@/hooks/useSubscription'
+import { useBilling } from '@/hooks/useBilling'
 import { organizationService } from '@/services/OrganizationService'
 import { todoService } from '@/services/TodoService'
 import { memberService } from '@/services/MemberService'
@@ -110,8 +111,28 @@ function OrgDetail({ orgId }: { orgId: string }) {
       {tab === 'todos' && hasFeature('todos') && <TodosTab orgId={orgId} />}
       {tab === 'members' && hasFeature('members') && <MembersTab orgId={orgId} />}
       {tab === 'settings' && hasFeature('settings') && <SettingsTab orgId={orgId} />}
-      {tab === 'billing' && isOrgOwner() && <BillingTab orgId={orgId} isOwner={isOrgOwner()} />}
+      {tab === 'billing' && isOrgOwner() && <BillingSection orgId={orgId} />}
     </>
+  )
+}
+
+function BillingSection({ orgId }: { orgId: string }) {
+  const { isOrgOwner } = usePermissions()
+  const billing = useBilling(orgId)
+  return (
+    <BillingTab
+      currentPlan={billing.currentPlan}
+      plans={billing.plans}
+      history={billing.history}
+      loading={billing.loading}
+      purchasing={billing.purchasing}
+      billingPeriod={billing.billingPeriod}
+      isOwner={isOrgOwner()}
+      onBillingPeriodChange={billing.setBillingPeriod}
+      onSubscribe={billing.subscribe}
+      onChangePlan={billing.changePlan}
+      onCancel={billing.cancel}
+    />
   )
 }
 

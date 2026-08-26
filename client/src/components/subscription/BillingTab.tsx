@@ -1,61 +1,34 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { subscriptionService } from '@/services/SubscriptionService'
 import type { CurrentSubscription, SubscriptionPlan, SubscriptionHistoryView } from '@/types'
-import { subscriptionPlanService } from '@/services/SubscriptionPlanService'
 
 interface BillingTabProps {
-  orgId: string
+  currentPlan: CurrentSubscription | null
+  plans: SubscriptionPlan[]
+  history: SubscriptionHistoryView[]
+  loading: boolean
+  purchasing: string | null
+  billingPeriod: 'monthly' | 'yearly'
   isOwner: boolean
+  onBillingPeriodChange: (period: 'monthly' | 'yearly') => void
+  onSubscribe: (planId: string) => void
+  onChangePlan: (planId: string) => void
+  onCancel: () => void
 }
 
-export function BillingTab({ orgId, isOwner }: BillingTabProps) {
-  const [currentPlan, setCurrentPlan] = useState<CurrentSubscription | null>(null)
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
-  const [history, setHistory] = useState<SubscriptionHistoryView[]>([])
-  const [loading, setLoading] = useState(true)
-  const [purchasing, setPurchasing] = useState<string | null>(null)
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly')
-
-  const loadData = useCallback(async () => {
-    const [currentResult, plansResult, historyResult] = await Promise.all([
-      subscriptionService.getMySubscription(orgId),
-      subscriptionService.getPlans(),
-      subscriptionPlanService.getHistory(orgId),
-    ])
-
-    if (currentResult.data) setCurrentPlan(currentResult.data as unknown as CurrentSubscription)
-    if (plansResult.data) setPlans(plansResult.data as unknown as SubscriptionPlan[])
-    if (historyResult.data) setHistory(historyResult.data as unknown as SubscriptionHistoryView[])
-
-    setLoading(false)
-  }, [orgId])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
-
-  const handleSubscribe = async (planId: string) => {
-    setPurchasing(planId)
-    const { error } = await subscriptionService.subscribe(orgId, planId, billingPeriod)
-    if (!error) loadData()
-    setPurchasing(null)
-  }
-
-  const handleChangePlan = async (planId: string) => {
-    setPurchasing(planId)
-    const { error } = await subscriptionService.changePlan(orgId, planId, billingPeriod)
-    if (!error) loadData()
-    setPurchasing(null)
-  }
-
-  const handleCancel = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription?')) return
-    await subscriptionService.cancel(orgId)
-    loadData()
-  }
-
+export function BillingTab({
+  currentPlan,
+  plans,
+  history,
+  loading,
+  purchasing,
+  billingPeriod,
+  isOwner,
+  onBillingPeriodChange,
+  onSubscribe,
+  onChangePlan,
+  onCancel,
+}: BillingTabProps) {
   if (loading) return <div className="py-8 text-center text-gray-500">Loading...</div>
 
   return (
@@ -89,7 +62,9 @@ export function BillingTab({ orgId, isOwner }: BillingTabProps) {
             </div>
             {isOwner && (
               <button
-                onClick={handleCancel}
+                onClick={() => {
+                  if (confirm('Are you sure you want to cancel your subscription?')) onCancel()
+                }}
                 className="mt-4 text-red-600 hover:underline text-sm"
               >
                 Cancel Subscription
@@ -107,13 +82,13 @@ export function BillingTab({ orgId, isOwner }: BillingTabProps) {
           <h3 className="text-lg font-semibold mb-4">Available Plans</h3>
           <div className="flex gap-2 mb-4">
             <button
-              onClick={() => setBillingPeriod('monthly')}
+              onClick={() => onBillingPeriodChange('monthly')}
               className={`px-3 py-1 rounded text-sm ${billingPeriod === 'monthly' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
             >
               Monthly
             </button>
             <button
-              onClick={() => setBillingPeriod('yearly')}
+              onClick={() => onBillingPeriodChange('yearly')}
               className={`px-3 py-1 rounded text-sm ${billingPeriod === 'yearly' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
             >
               Yearly
@@ -138,7 +113,7 @@ export function BillingTab({ orgId, isOwner }: BillingTabProps) {
                       <span className="text-blue-600 text-sm">Current Plan</span>
                     ) : currentPlan ? (
                       <button
-                        onClick={() => handleChangePlan(plan.id)}
+                        onClick={() => onChangePlan(plan.id)}
                         disabled={purchasing === plan.id}
                         className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
                       >
@@ -146,7 +121,7 @@ export function BillingTab({ orgId, isOwner }: BillingTabProps) {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleSubscribe(plan.id)}
+                        onClick={() => onSubscribe(plan.id)}
                         disabled={purchasing === plan.id}
                         className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
                       >
