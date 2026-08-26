@@ -3,7 +3,7 @@
 import { AppLayout } from '@/components/layout/AppLayout'
 import { adminService } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
 interface AdminOrgRow {
@@ -18,16 +18,15 @@ export default function AdminPage() {
   const [orgs, setOrgs] = useState<AdminOrgRow[]>([])
   const [loading, setLoading] = useState(true)
 
+  const refresh = useCallback(async () => {
+    const { data } = await adminService.listAllOrganizations()
+    if (data) setOrgs(data)
+    setLoading(false)
+  }, [])
+
   useEffect(() => {
-    if (isSystemAdmin) {
-      const load = async () => {
-        const { data } = await adminService.listAllOrganizations()
-        if (data) setOrgs(data)
-        setLoading(false)
-      }
-      load()
-    }
-  }, [isSystemAdmin])
+    if (isSystemAdmin) void refresh()
+  }, [isSystemAdmin, refresh])
 
   if (adminLoading) return <AppLayout><div>Loading...</div></AppLayout>
 
@@ -78,7 +77,55 @@ export default function AdminPage() {
         <Link href="/admin/subscriptions" className="text-blue-600 hover:underline block">
           Organization Subscriptions
         </Link>
+        <SystemAdminCard onChanged={refresh} />
       </div>
     </AppLayout>
+  )
+}
+
+function SystemAdminCard({ onChanged }: { onChanged: () => Promise<void> }) {
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const run = async (op: (userId: string) => Promise<{ error: string | null }>) => {
+    setBusy(true)
+    setError(null)
+    const lookup = await adminService.findUserIdByEmail(email.trim())
+    if (!lookup.data) {
+      setError(lookup.error ?? 'No user found with that email')
+      setBusy(false)
+      return
+    }
+    const { error: err } = await op(lookup.data)
+    if (err) setError(err)
+    setEmail('')
+    setBusy(false)
+    await onChanged()
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow space-y-3 max-w-xl">
+      <h2 className="font-semibold">System Administrators</h2>
+      <p className="text-xs text-gray-500">
+        Grant or revoke platform administration by email. The last admin cannot be revoked.
+      </p>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+      <div className="flex gap-2">
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="user@example.com" disabled={busy}
+          className="flex-1 border rounded-md px-3 py-1.5 text-sm" />
+        <button disabled={busy || !email.trim()}
+          onClick={() => run((uid) => adminService.grantSystemAdmin(uid))}
+          className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50">
+          Grant
+        </button>
+        <button disabled={busy || !email.trim()}
+          onClick={() => run((uid) => adminService.revokeSystemAdmin(uid))}
+          className="px-3 py-1.5 border border-red-300 text-red-600 rounded-md text-sm hover:bg-red-50 disabled:opacity-50">
+          Revoke
+        </button>
+      </div>
+    </div>
   )
 }
