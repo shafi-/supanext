@@ -950,14 +950,18 @@ begin
   where i.token_hash = v_hash
   for update;
 
-  if not found or v_inv.status <> 'pending' or v_inv.expires_at <= now() then
-    raise exception using errcode = '22023', message = 'Invitation is invalid or expired';
+  if not found then
+    raise exception using errcode = '22023', message = 'INV01: Invitation not found';
+  end if;
+
+  if v_inv.status <> 'pending' or v_inv.expires_at <= now() then
+    raise exception using errcode = '22023', message = 'INV02: Invitation expired or already used';
   end if;
 
   select lower(email) into v_user_email from auth.users where id = v_user_id;
 
   if v_user_email is null or v_user_email <> v_inv.email then
-    raise exception using errcode = '42501', message = 'Invitation email does not match the authenticated user';
+    raise exception using errcode = '42501', message = 'INV03: Invitation email does not match authenticated user';
   end if;
 
   insert into app.organization_members(organization_id, user_id, role)
@@ -1481,7 +1485,7 @@ declare
   v_result jsonb;
 begin
   if p_token is null or length(btrim(p_token)) = 0 then
-    raise exception using errcode = '22023', message = 'Invitation is invalid or expired';
+    raise exception using errcode = '22023', message = 'INV01: Invitation not found';
   end if;
 
   select jsonb_build_object(
@@ -1499,7 +1503,14 @@ begin
     and i.expires_at > now();
 
   if v_result is null then
-    raise exception using errcode = '22023', message = 'Invitation is invalid or expired';
+    if exists (
+      select 1 from app.organization_invitations
+      where token_hash = security.token_digest(p_token)
+    ) then
+      raise exception using errcode = '22023', message = 'INV02: Invitation expired or already used';
+    else
+      raise exception using errcode = '22023', message = 'INV01: Invitation not found';
+    end if;
   end if;
 
   return v_result;

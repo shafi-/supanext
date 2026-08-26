@@ -222,31 +222,29 @@ Returns public org data for anonymous access. Uses `EXISTS` subquery to verify o
 
 ## SECURITY DEFINER
 
-Must bypass RLS:
-- `can_perform()` — central permission check (breaks RLS recursion)
-- `is_member()` — membership check
-- `is_system_admin()` — system admin check
-- `get_user_role()` — role lookup
-- Trigger functions: `handle_new_user`, `audit_table_changes`, `update_updated_at_column`
-- CLI helpers: `set_system_admin`, `bootstrap_system_admin`, `create_test_user`, `reset_development_data`
-- Anonymous access: `get_public_org_by_slug`
+Exception classes only (INVOKER-first rule — everything else is INVOKER):
+
+- **Triggers / auth handler**: `handle_new_user`, `audit_action`, `audit_table_changes`, `update_updated_at_column` (execute revoked from every role)
+- **RLS recursion anchors**: `is_system_admin()`, `private.get_user_org_ids()`, `private.find_valid_invite()`, `private.has_pending_invite()`, `private.find_user_id_by_email()` (consulted inside policy expressions; boolean/UUID-only exposure)
+- **Anon pre-auth reads**: `validate_invite`, `get_public_org_by_slug`
+- **Privileged-column writers** (sole writers of `profiles.is_system_admin`, each guarded by an internal `is_system_admin()` check): `grant_system_admin`, `revoke_system_admin`, `bootstrap_system_admin` (one-shot, advisory-locked)
 
 ## SECURITY INVOKER
 
-All CRUD and read functions — RLS handles authorization via `can_perform()`.
+All CRUD and read functions — RLS handles authorization via policies and `can_perform()`.
 
 ## Key Principles
 
-1. RLS is the source of truth — `can_perform()` in every policy
-2. `can_perform()` is SECURITY DEFINER to break recursion
-3. Utility functions are SECURITY DEFINER
+1. RLS is the source of truth — permissive policies re-open exactly what functions need
+2. Every function callable without the service role key is SECURITY INVOKER unless it fits a documented DEFINER exception class above
+3. Deny-all by default
 4. CRUD functions are SECURITY INVOKER — also use `can_perform()` for business logic
-5. Deny-all by default
-6. First system admin created outside UI
-7. Permissions normalized in `role_permissions` (one row per role+permission)
-8. Owner = `role='admin'` + `is_owner=true` (not a separate role)
-9. `subscription:manage` is owner-only via `can_perform()` short-circuit on `is_owner`
-10. Permission format: `resource:action`
+5. First system admin created outside UI (`bootstrap_system_admin` works only while zero admins exist)
+6. Permissions normalized in `role_permissions` (one row per role+permission)
+7. Owner = `role='admin'` + `is_owner=true` (not a separate role)
+8. `subscription:manage` is owner-only via `can_perform()` short-circuit on `is_owner`
+9. Permission format: `resource:action`
+10. Direct table writes are closed at the column level where needed: authenticated may UPDATE only `full_name, avatar_url, metadata` on `profiles`
 
 ## pgTAP Test Coverage
 

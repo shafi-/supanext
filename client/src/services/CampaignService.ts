@@ -2,19 +2,10 @@ import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
-export interface Campaign {
-  id: string
-  organization_id: string
-  name: string
-  description: string | null
-  goal_minor: number | null
-  currency: string
-  starts_at: string | null
-  ends_at: string | null
-  created_by: string
-  created_at: string
-  updated_at: string
-}
+// Re-export from types/campaign.ts for backward compatibility
+export type { Campaign } from '@/types/campaign'
+
+import type { Campaign } from '@/types/campaign'
 
 export class CampaignService extends BaseRepository {
   async listCampaigns(orgId?: string): ServiceData<Campaign[]> {

@@ -17,6 +17,10 @@ interface OrganizationContextType {
   /** The active organization (server-truth via get_session_context). */
   currentOrg: SessionOrganization | null
   membership: { role: 'admin' | 'member' } | null
+  /** System-admin flag from the same session context call. */
+  isSystemAdmin: boolean
+  /** True while the initial session context RPC is in flight. */
+  adminLoading: boolean
   loading: boolean
   error: string | null
   switchOrg: (orgId: string) => Promise<void>
@@ -29,6 +33,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<SessionOrganization[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,6 +46,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       setOrganizations(data.organizations ?? [])
       setActiveId(data.active_organization_id)
       setDisplayName(data.display_name || null)
+      setIsSystemAdmin(data.is_system_admin === true)
     }
     setLoading(false)
   }, [])
@@ -74,7 +80,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   return (
     <OrganizationContext.Provider
-      value={{ displayName, organizations, currentOrg, membership, loading, error, switchOrg, refresh }}
+      value={{ displayName, organizations, currentOrg, membership, isSystemAdmin, adminLoading: loading, loading, error, switchOrg, refresh }}
     >
       {children}
     </OrganizationContext.Provider>

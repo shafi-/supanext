@@ -7,11 +7,14 @@
 --   4. Existing admins can grant new admins
 --   5. Self-revocation blocked; zero-admin state unreachable
 --   6. Authenticated users cannot flip their own is_system_admin flag
---      directly (RLS deny-all UPDATE)
+--      through ANY unprivileged path (column privilege — the UPDATE
+--      itself raises permission denied)
+--   7. Own-row profile edits are limited to granted columns
+--      (full_name/avatar_url/metadata); email and timestamps immutable
 -- ====================================================================
 
 BEGIN;
-SELECT plan(13);
+SELECT plan(15);
 
 -- ====================================================================
 -- SETUP
@@ -125,18 +128,33 @@ SELECT is(
 );
 
 -- ====================================================================
--- TEST 9: Direct table escalation blocked by RLS deny-all UPDATE
+-- TEST 9: Direct escalation impossible — flag column not writable,
+--         safe own-row edits allowed, email immutable
 -- ====================================================================
 
 SELECT set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
 SET ROLE authenticated;
 
-UPDATE profiles SET is_system_admin = true WHERE id = auth.uid();
+SELECT throws_ok(
+  $$UPDATE profiles SET is_system_admin = true WHERE id = auth.uid()$$,
+  NULL,
+  NULL,
+  'UPDATE on profiles.is_system_admin denied (column privilege)'
+);
+
+UPDATE profiles SET full_name = 'Member Renamed' WHERE id = auth.uid();
 
 SELECT is(
-  (SELECT is_system_admin FROM profiles WHERE id = auth.uid()),
-  false,
-  'Authenticated UPDATE on profiles.is_system_admin silently blocked by RLS'
+  (SELECT full_name FROM profiles WHERE id = auth.uid()),
+  'Member Renamed',
+  'Own-row edit of granted column succeeds'
+);
+
+SELECT throws_ok(
+  $$UPDATE profiles SET email = 'hijacked@test.com' WHERE id = auth.uid()$$,
+  NULL,
+  NULL,
+  'UPDATE on profiles.email denied (column privilege)'
 );
 
 RESET ROLE;

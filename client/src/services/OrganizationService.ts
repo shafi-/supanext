@@ -2,38 +2,22 @@ import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
-export interface SessionOrganization {
-  id: string
-  name: string
-  slug: string
-  status: 'pending' | 'active' | 'suspended' | 'rejected'
-  role: 'admin' | 'member'
-  is_active_selection: boolean
-}
+// Re-export from types/organization.ts for backward compatibility
+export type {
+  SessionOrganization,
+  SessionContext,
+  OrganizationStatus,
+  PublicOrganization,
+  OrgStats,
+} from '@/types/organization'
 
-export interface SessionContext {
-  user_id: string
-  display_name: string
-  is_system_admin: boolean
-  active_organization_id: string | null
-  organizations: SessionOrganization[]
-}
-
-export interface OrganizationStatus {
-  id: string
-  name: string
-  status: string
-  suspension_note: string | null
-}
-
-export interface PublicOrganization {
-  name: string
-  slug: string
-  status: 'active' | 'suspended'
-  member_count: number
-  campaign_count: number
-  created_at: string
-}
+import type {
+  SessionOrganization,
+  SessionContext,
+  OrganizationStatus,
+  PublicOrganization,
+  OrgStats,
+} from '@/types/organization'
 
 export class OrganizationService extends BaseRepository {
   /** Request a new organization — creator becomes its admin; starts pending. */
@@ -55,6 +39,10 @@ export class OrganizationService extends BaseRepository {
 
   async getOrganizationStatus(orgId?: string): ServiceData<OrganizationStatus> {
     return this.callRpc<OrganizationStatus>(Rpc.Org.GetStatus, { p_org_id: orgId })
+  }
+
+  async getOrgStats(orgId: string): ServiceData<OrgStats> {
+    return this.callRpc<OrgStats>(Rpc.Org.GetStats, { p_org_id: orgId })
   }
 
   /** Anonymous-safe public directory (active + suspended orgs). */

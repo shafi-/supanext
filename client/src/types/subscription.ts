@@ -14,7 +14,7 @@ export interface OrganizationSubscription {
   id: string
   organization_id: string
   plan_id: string
-  status: 'active' | 'paused' | 'expired' | 'cancelled'
+  status: 'active' | 'paused' | 'expired' | 'canceled'
   billing_period: 'monthly' | 'yearly'
   current_period_start: string
   current_period_end: string
@@ -33,7 +33,7 @@ export interface SubscriptionHistory {
   id: string
   organization_id: string
   plan_id: string
-  action: 'subscribed' | 'upgraded' | 'downgraded' | 'expired' | 'renewed' | 'cancelled' | 'paused' | 'payment'
+  action: 'subscribed' | 'upgraded' | 'downgraded' | 'expired' | 'renewed' | 'canceled' | 'paused' | 'payment'
   amount: number
   payment_status: 'paid' | 'pending' | 'failed'
   invoice_number: string | null

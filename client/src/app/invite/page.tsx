@@ -48,7 +48,9 @@ function InviteContent() {
       const { data, error } = await inviteService.getInvitationPreview(token!)
       if (cancelled) return
       if (error) {
-        if (error.includes('invalid or expired')) {
+        if (error.startsWith('INV01')) {
+          setStatus('expired')
+        } else if (error.startsWith('INV02')) {
           setStatus('expired')
         } else {
           setStatus('error')

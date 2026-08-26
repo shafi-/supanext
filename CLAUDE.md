@@ -30,7 +30,7 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 The project treats PostgreSQL as an application backend, not just data storage:
 - **API-like Functions**: Each function acts like a well-defined API endpoint
 - **Business Logic Encapsulation**: Complex rules live in database functions
-- **Security by Default**: RLS + SECURITY DEFINER ensures proper authorization
+- **Security by Default**: RLS carries authorization; every function callable without the service role key must be `SECURITY INVOKER`. `SECURITY DEFINER` only for the documented exceptions (triggers, RLS recursion anchors, anon pre-auth reads, privileged-column writers with internal guards)
 - **Single Source of Truth**: Business rules defined once in the database
 - **Less Effort Than Traditional APIs**: No HTTP layer, serialization, middleware overhead
 
@@ -206,7 +206,7 @@ supabase functions deploy
    RETURNS entity_view AS $$
      -- Business logic and validation
      -- Return structured data
-   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   $$ LANGUAGE plpgsql SECURITY INVOKER;
    ```
 2. **Add service wrapper**:
    ```typescript

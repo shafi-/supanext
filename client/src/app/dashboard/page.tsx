@@ -1,11 +1,17 @@
 'use client'
 
 import { useAuth, useRequireAuth } from '@/hooks/useAuth'
+import { useOrganization } from '@/hooks/useOrganization'
+import { useOrgStats } from '@/hooks/useOrgStats'
+import { useSubscription } from '@/hooks/useSubscription'
 import Link from 'next/link'
 
 export default function DashboardPage() {
   const { user } = useRequireAuth()
   const { signOut } = useAuth()
+  const { organizations, currentOrg } = useOrganization()
+  const { stats } = useOrgStats(currentOrg?.id)
+  const { hasFeature } = useSubscription(currentOrg?.id)
 
   const handleSignOut = async () => {
     try {
@@ -80,21 +86,36 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-8 bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-indigo-600">0</p>
-              <p className="text-gray-600">Organizations</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            {currentOrg ? `Stats — ${currentOrg.name}` : 'Quick Stats'}
+          </h3>
+          {!currentOrg ? (
+            <p className="text-gray-500">
+              Select an organization to see stats.{' '}
+              <Link href="/orgs" className="text-indigo-600 hover:underline">
+                Go to Organizations →
+              </Link>
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-indigo-600">{organizations.length}</p>
+                <p className="text-gray-600">Organizations</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-green-600">
+                  {stats?.member_count ?? '—'}
+                </p>
+                <p className="text-gray-600">Team Members</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-blue-600">
+                  {hasFeature('fundraising') ? (stats?.campaign_count ?? 0) : '—'}
+                </p>
+                <p className="text-gray-600">Campaigns</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-green-600">0</p>
-              <p className="text-gray-600">Team Members</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-blue-600">0</p>
-              <p className="text-gray-600">Active Projects</p>
-            </div>
-          </div>
+          )}
         </div>
       </main>
     </div>

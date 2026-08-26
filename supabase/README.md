@@ -17,7 +17,7 @@ This project implements a database-driven architecture where:
 Instead of treating PostgreSQL as just data storage, we treat it as an application server that provides:
 
 1. **API-like Functions** - Each function acts like a well-defined API endpoint
-2. **Security by Default** - RLS + SECURITY DEFINER ensures proper authorization
+2. **Security by Default** - RLS carries authorization; callable functions are `SECURITY INVOKER` by default, with a short documented exception list
 3. **Data Integrity** - Constraints, triggers, and validation at the source
 4. **Single Source of Truth** - Business rules live in one place
 5. **Performance** - Complex operations happen where the data lives
@@ -35,16 +35,23 @@ SELECT * FROM get_organization('xyz');
 
 ### 2. Security Through Functions
 ```sql
--- Functions run with elevated privileges (SECURITY DEFINER)
--- But apply their own authorization logic:
+-- Functions run as the calling user (SECURITY INVOKER) —
+-- RLS enforces authorization; functions add business validation:
 CREATE OR REPLACE FUNCTION update_organization(org_id UUID, ...)
-SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY INVOKER AS $$
   -- Check permissions inside function
-  IF NOT is_admin_or_owner(auth.uid(), org_id) THEN
+  IF NOT can_perform('org:update', org_id) THEN
     RAISE EXCEPTION 'Permission denied';
   END IF;
   -- Proceed with operation
 $$
+
+-- SECURITY DEFINER is reserved for documented exceptions ONLY:
+--   1. Triggers / auth handler (run outside user context)
+--   2. RLS recursion anchors (is_system_admin, private.* helpers)
+--   3. Anon pre-auth reads (validate_invite, get_public_org_by_slug)
+--   4. Privileged-column writers with internal guards
+--      (grant/revoke/bootstrap_system_admin)
 ```
 
 ### 3. Restrictive Default Policies
@@ -52,10 +59,11 @@ $$
 -- All tables have "deny all" by default:
 CREATE POLICY "deny_all_organizations" ON organizations FOR ALL USING (false);
 
--- Only functions can bypass RLS:
-CREATE OR REPLACE FUNCTION get_organizations()
-RETURNS SETOF organization_view
-LANGUAGE sql SECURITY DEFINER -- Bypasses RLS, applies own logic
+-- Permissive policies re-open exactly what functions need:
+CREATE POLICY "members_can_read" ON organizations FOR SELECT USING (
+  can_perform('org:read', id)
+);
+-- Callable functions stay SECURITY INVOKER and resolve rows through RLS.
 ```
 
 ## Table Structure
@@ -292,8 +300,8 @@ SELECT get_user_role('user-uuid', 'org-uuid');
 - Verify function was created successfully
 
 **RLS policy conflicts:**
-- Functions with `SECURITY DEFINER` bypass RLS
-- Check if function has proper permission checks inside
+- Callable functions are `SECURITY INVOKER` — they resolve rows through RLS
+- `SECURITY DEFINER` is reserved for the documented exception classes only
 - Ensure RLS policies aren't too restrictive for intended access
 
 ## Best Practices

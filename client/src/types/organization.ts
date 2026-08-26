@@ -1,35 +1,42 @@
-export interface Organization {
+/**
+ * Organization-related type definitions.
+ * Single source of truth — service files re-export from here.
+ */
+
+export interface SessionOrganization {
   id: string
   name: string
   slug: string
-  logo_url: string | null
-  description: string | null
-  settings: Record<string, unknown>
-  created_at: string
-  updated_at: string
+  status: 'pending' | 'active' | 'suspended' | 'rejected'
+  role: 'admin' | 'member'
+  is_active_selection: boolean
 }
 
-export interface OrganizationView extends Organization {
+export interface SessionContext {
   user_id: string
-  user_role: string
-  membership_status: string
-  joined_at: string
+  display_name: string
+  is_system_admin: boolean
+  active_organization_id: string | null
+  organizations: SessionOrganization[]
 }
 
-export interface OrganizationDetailView extends Organization {
-  member_count: number
+export interface OrganizationStatus {
+  id: string
+  name: string
+  status: string
+  suspension_note: string | null
 }
 
-export interface CreateOrganizationDto {
+export interface PublicOrganization {
   name: string
   slug: string
-  description?: string
-  settings?: Record<string, unknown>
+  status: 'active' | 'suspended'
+  member_count: number
+  campaign_count: number
+  created_at: string
 }
 
-export interface UpdateOrganizationDto {
-  name?: string
-  slug?: string
-  description?: string
-  settings?: Record<string, unknown>
+export interface OrgStats {
+  member_count: number
+  campaign_count: number
 }

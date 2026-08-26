@@ -2,12 +2,10 @@ import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
-export interface UpdatedProfile {
-  id: string
-  display_name: string | null
-  avatar_url: string | null
-  active_organization_id: string | null
-}
+// Re-export from types/profile.ts for backward compatibility
+export type { UpdatedProfile } from '@/types/profile'
+
+import type { UpdatedProfile } from '@/types/profile'
 
 export class ProfileService extends BaseRepository {
   async updateMyProfile(
