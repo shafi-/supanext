@@ -47,26 +47,4 @@ export abstract class BaseRepository {
     }
     return userId
   }
-
-  /**
-   * Check if current user has specific role in organization
-   * get_membership returns a table, so data is an array
-   */
-  protected async hasRoleInOrganization(
-    organizationId: string,
-    role: string
-  ): Promise<boolean> {
-    const { data } = await this.callRpc<Array<{ role: string; permissions: string[]; is_active: boolean; is_owner: boolean }>>(
-      Rpc.Member.GetMembership,
-      { p_org_id: organizationId }
-    )
-
-    if (!data || data.length === 0) return false
-
-    const roleHierarchy = ['viewer', 'member', 'admin']
-    const userRoleIndex = roleHierarchy.indexOf(data[0].role)
-    const requiredRoleIndex = roleHierarchy.indexOf(role)
-
-    return userRoleIndex >= requiredRoleIndex
-  }
 }

@@ -1,49 +1,34 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import type { CurrentSubscription } from '@/types'
-import { subscriptionService } from '@/services/SubscriptionService'
+import { useCallback, useEffect, useState } from 'react'
+import { subscriptionService, type CurrentSubscription } from '@/services/SubscriptionService'
 
-export function useSubscription(orgId: string | null) {
-  const [currentPlan, setCurrentPlan] = useState<CurrentSubscription | null>(null)
+export function useSubscription(orgId?: string) {
+  const [subscription, setSubscription] = useState<CurrentSubscription | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const hasFeature = useCallback(
-    (feature: string): boolean => {
-      return currentPlan?.features?.includes(feature) ?? false
-    },
-    [currentPlan]
-  )
-
-  const loadSubscription = useCallback(async () => {
+  const refresh = useCallback(async () => {
     if (!orgId) {
-      setCurrentPlan(null)
+      setSubscription(null)
       setLoading(false)
       return
     }
-
-    try {
-      const { data, error } = await subscriptionService.getMySubscription(orgId)
-      if (error || !data) {
-        setCurrentPlan(null)
-      } else {
-        setCurrentPlan(data as unknown as CurrentSubscription)
-      }
-    } catch {
-      setCurrentPlan(null)
-    } finally {
-      setLoading(false)
-    }
+    setLoading(true)
+    const { data, error: err }= await subscriptionService.getCurrentSubscription(orgId)
+    setSubscription(data)
+    setError(err)
+    setLoading(false)
   }, [orgId])
 
   useEffect(() => {
-    loadSubscription()
-  }, [loadSubscription])
+    void refresh()
+  }, [refresh])
 
-  return {
-    currentPlan,
-    loading,
-    hasFeature,
-    refetch: loadSubscription,
-  }
+  const hasFeature = useCallback(
+    (featureCode: string) => subscription?.features?.includes(featureCode) ?? false,
+    [subscription]
+  )
+
+  return { subscription, loading, error, refresh, hasFeature }
 }

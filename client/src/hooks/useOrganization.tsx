@@ -1,73 +1,77 @@
 'use client'
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react'
-import { organizationService } from '@/services/OrganizationService'
-import { memberService } from '@/services/MemberService'
-import type { OrganizationDetailView, Membership } from '@/types'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { organizationService, type SessionOrganization } from '@/services/OrganizationService'
 
 interface OrganizationContextType {
-  currentOrg: OrganizationDetailView | null
-  membership: Membership | null
-  organizations: OrganizationDetailView[]
+  /** All organizations the user belongs to. */
+  organizations: SessionOrganization[]
+  /** The active organization (server-truth via get_session_context). */
+  currentOrg: SessionOrganization | null
+  membership: { role: 'admin' | 'member' } | null
   loading: boolean
   error: string | null
-  setCurrentOrg: (org: OrganizationDetailView | null) => void
-  refreshOrg: () => Promise<void>
+  switchOrg: (orgId: string) => Promise<void>
+  refresh: () => Promise<void>
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined)
 
 export function OrganizationProvider({ children }: { children: React.ReactNode }) {
-  const [currentOrg, setCurrentOrg] = useState<OrganizationDetailView | null>(null)
-  const [membership, setMembership] = useState<Membership | null>(null)
-  const [organizations, setOrganizations] = useState<OrganizationDetailView[]>([])
+  const [organizations, setOrganizations] = useState<SessionOrganization[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadOrganizations = useCallback(async () => {
+  const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data, error: err } = await organizationService.getMyOrganizations()
+    const { data, error: err } = await organizationService.getSessionContext()
     if (err) setError(err)
-    if (data) setOrganizations(data as unknown as OrganizationDetailView[])
+    if (data) {
+      setOrganizations(data.organizations ?? [])
+      setActiveId(data.active_organization_id)
+    }
     setLoading(false)
   }, [])
 
-  const loadMembership = useCallback(async (orgId: string) => {
-    const { data } = await memberService.getMembership(orgId)
-    if (data && data.length > 0) {
-      setMembership(data[0])
-    }
-  }, [])
-
-  const refreshOrg = useCallback(async () => {
-    if (currentOrg) {
-      const { data } = await organizationService.getOrganization(currentOrg.id)
-      if (data) setCurrentOrg(data)
-    }
-  }, [currentOrg, setCurrentOrg])
-
   useEffect(() => {
-    loadOrganizations()
-  }, [loadOrganizations])
+    void refresh()
+  }, [refresh])
 
-  useEffect(() => {
-    if (currentOrg) {
-      loadMembership(currentOrg.id)
-    }
-  }, [currentOrg, currentOrg?.id, loadMembership])
+  const switchOrg = useCallback(
+    async (orgId: string) => {
+      setError(null)
+      const { error: err } = await organizationService.setActiveOrganization(orgId)
+      if (err) {
+        setError(err)
+        return
+      }
+      setActiveId(orgId)
+    },
+    []
+  )
+
+  const currentOrg = useMemo(
+    () => organizations.find((o) => o.id === activeId) ?? null,
+    [organizations, activeId]
+  )
+
+  const membership = useMemo(
+    () => (currentOrg ? { role: currentOrg.role } : null),
+    [currentOrg]
+  )
 
   return (
     <OrganizationContext.Provider
-      value={{
-        currentOrg,
-        membership,
-        organizations,
-        loading,
-        error,
-        setCurrentOrg,
-        refreshOrg,
-      }}
+      value={{ organizations, currentOrg, membership, loading, error, switchOrg, refresh }}
     >
       {children}
     </OrganizationContext.Provider>

@@ -3,44 +3,25 @@
 import { useOrganization } from './useOrganization'
 
 /**
- * Client-side fallback matrix. Mirrors the seeded role_permissions in the
- * database. The database is the source of truth — membership.permissions
- * (from get_membership RPC) takes precedence when available.
+ * Client-side gating only — the database remains the source of truth.
+ * Org admins implicitly hold every organization-scoped permission;
+ * members hold exactly what admins granted them (member.permissions).
  */
-const FALLBACK_PERMISSIONS = {
-  admin: ['org:read', 'org:update', 'org:delete', 'members:read', 'members:create', 'members:update', 'members:delete', 'todos:read', 'todos:create', 'todos:update', 'todos:delete', 'invites:read', 'invites:create', 'invites:delete'],
-  member: ['org:read', 'members:read', 'todos:read', 'todos:create', 'todos:update', 'todos:delete', 'invites:read'],
-  viewer: ['org:read', 'members:read', 'todos:read'],
-} as const
-
 export function usePermissions() {
-  const { membership } = useOrganization()
+  const { membership, currentOrg } = useOrganization()
 
-  const role = membership?.role ?? 'viewer'
-  const isOwner = membership?.is_owner ?? false
-
-  // Prefer live permissions from get_membership; fall back to static matrix.
-  const dbPermissions = membership?.permissions?.filter(Boolean) ?? []
-  const permissions = dbPermissions.length > 0
-    ? dbPermissions
-    : [...(FALLBACK_PERMISSIONS[role as keyof typeof FALLBACK_PERMISSIONS] ?? FALLBACK_PERMISSIONS.viewer)]
-
-  const hasPermission = (permission: string): boolean => {
-    if (isOwner) return true
-    return permissions.includes(permission) || permissions.includes('*')
-  }
-
+  const role = membership?.role ?? null
   const isOrgAdmin = (): boolean => role === 'admin'
-  const isOrgOwner = (): boolean => isOwner
-  const isOrgMember = (): boolean => ['admin', 'member'].includes(role)
+  const isOrgMember = (): boolean => role !== null
+  // No owner concept in the current schema.
+  const isOrgOwner = (): boolean => false
 
   return {
     role,
-    isOwner,
-    permissions,
-    hasPermission,
     isOrgAdmin,
-    isOrgOwner,
     isOrgMember,
+    isOrgOwner,
+    orgName: currentOrg?.name ?? null,
+    orgStatus: currentOrg?.status ?? null,
   }
 }

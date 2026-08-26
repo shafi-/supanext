@@ -1,89 +1,50 @@
 'use client'
 
 import { AppLayout } from '@/components/layout/AppLayout'
-import { subscriptionPlanService } from '@/services/SubscriptionPlanService'
+import { adminService } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
-import { useState, useEffect, useCallback } from 'react'
-import type { SubscriptionPlan } from '@/types'
+import { useCallback, useState, useEffect } from 'react'
 import Link from 'next/link'
+
+interface AdminPlan {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  price_minor: number
+  currency: string
+  billing_interval: string
+  is_active: boolean
+  features: string[]
+}
 
 export default function AdminPlansPage() {
   const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
+  const [plans, setPlans] = useState<AdminPlan[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
-  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null)
   const [form, setForm] = useState({
+    code: '',
     name: '',
     description: '',
-    price_monthly: 0,
-    price_yearly: 0,
-    features: '',
+    price: '0',
+    currency: 'USD',
+    billingInterval: 'month',
+    featureCode: '',
   })
-  const [saving, setSaving] = useState(false)
 
-  const loadPlans = useCallback(async () => {
-    const { data } = await subscriptionPlanService.getPlans(true)
-    if (data) setPlans(data as unknown as SubscriptionPlan[])
+  const refresh = useCallback(async () => {
+    const { data, error: err } = await adminService.listPlans()
+    if (data) setPlans(data)
+    setError(err)
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    if (isSystemAdmin) loadPlans()
-  }, [isSystemAdmin, loadPlans])
-
-  const handleCreate = async () => {
-    setSaving(true)
-    const features = form.features.split(',').map(f => f.trim()).filter(Boolean)
-    const { error } = await subscriptionPlanService.createPlan(
-      form.name,
-      form.description,
-      form.price_monthly,
-      form.price_yearly,
-      features
-    )
-    if (!error) {
-      setShowCreate(false)
-      setForm({ name: '', description: '', price_monthly: 0, price_yearly: 0, features: '' })
-      loadPlans()
-    }
-    setSaving(false)
-  }
-
-  const handleUpdate = async () => {
-    if (!editingPlan) return
-    setSaving(true)
-    const features = form.features.split(',').map(f => f.trim()).filter(Boolean)
-    const { error } = await subscriptionPlanService.updatePlan(editingPlan.id, {
-      name: form.name,
-      description: form.description,
-      price_monthly: form.price_monthly,
-      price_yearly: form.price_yearly,
-      features,
-    })
-    if (!error) {
-      setEditingPlan(null)
-      setForm({ name: '', description: '', price_monthly: 0, price_yearly: 0, features: '' })
-      loadPlans()
-    }
-    setSaving(false)
-  }
-
-  const handleToggleActive = async (plan: SubscriptionPlan) => {
-    await subscriptionPlanService.updatePlan(plan.id, { is_active: !plan.is_active })
-    loadPlans()
-  }
-
-  const openEdit = (plan: SubscriptionPlan) => {
-    setEditingPlan(plan)
-    setForm({
-      name: plan.name,
-      description: plan.description || '',
-      price_monthly: plan.price_monthly,
-      price_yearly: plan.price_yearly,
-      features: (plan.features || []).join(', '),
-    })
-  }
+    if (isSystemAdmin) void refresh()
+  }, [isSystemAdmin, refresh])
 
   if (adminLoading) return <AppLayout><div>Loading...</div></AppLayout>
 
@@ -92,7 +53,6 @@ export default function AdminPlansPage() {
       <AppLayout>
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-gray-600">You don&apos;t have permission to access this page.</p>
           <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">Back to home</Link>
         </div>
       </AppLayout>
@@ -103,82 +63,64 @@ export default function AdminPlansPage() {
     <AppLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <Link href="/admin" className="text-sm text-gray-500 hover:underline">← Back to Admin</Link>
-            <h1 className="text-2xl font-bold mt-2">Subscription Plans</h1>
-          </div>
-          <button
-            onClick={() => { setShowCreate(true); setEditingPlan(null); setForm({ name: '', description: '', price_monthly: 0, price_yearly: 0, features: '' }) }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Create Plan
+          <h1 className="text-2xl font-bold">Subscription Plans</h1>
+          <button onClick={() => setShowCreate(!showCreate)}
+            className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+            {showCreate ? 'Cancel' : 'New Plan'}
           </button>
         </div>
+        {error && <p className="text-red-600">{error}</p>}
 
-        {(showCreate || editingPlan) && (
-          <div className="bg-white p-6 rounded-lg shadow space-y-4">
-            <h2 className="text-lg font-semibold">{editingPlan ? 'Edit Plan' : 'Create Plan'}</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="mt-1 block w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <input
-                  type="text"
-                  value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="mt-1 block w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Price Monthly ($)</label>
-                <input
-                  type="number"
-                  value={form.price_monthly}
-                  onChange={e => setForm({ ...form, price_monthly: Number(e.target.value) })}
-                  className="mt-1 block w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Price Yearly ($)</label>
-                <input
-                  type="number"
-                  value={form.price_yearly}
-                  onChange={e => setForm({ ...form, price_yearly: Number(e.target.value) })}
-                  className="mt-1 block w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Features (comma-separated)</label>
-                <input
-                  type="text"
-                  value={form.features}
-                  onChange={e => setForm({ ...form, features: e.target.value })}
-                  placeholder="todos, members, invites, settings, analytics"
-                  className="mt-1 block w-full border rounded px-3 py-2"
-                />
-              </div>
+        {showCreate && (
+          <div className="bg-white p-4 rounded-lg shadow space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <input placeholder="code" value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                className="border rounded px-2 py-1.5 text-sm" />
+              <input placeholder="name" value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="border rounded px-2 py-1.5 text-sm" />
+              <input placeholder="price (minor units)" type="number" value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                className="border rounded px-2 py-1.5 text-sm" />
+              <select value={form.billingInterval}
+                onChange={(e) => setForm({ ...form, billingInterval: e.target.value })}
+                className="border rounded px-2 py-1.5 text-sm">
+                <option value="month">month</option>
+                <option value="year">year</option>
+                <option value="one_time">one_time</option>
+              </select>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={editingPlan ? handleUpdate : handleCreate}
-                disabled={saving || !form.name}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : editingPlan ? 'Update' : 'Create'}
-              </button>
-              <button
-                onClick={() => { setShowCreate(false); setEditingPlan(null) }}
-                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-              >
-                Cancel
+            <input placeholder="description" value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full border rounded px-2 py-1.5 text-sm" />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Initial feature code:</span>
+              <input placeholder="e.g. fundraising" value={form.featureCode}
+                onChange={(e) => setForm({ ...form, featureCode: e.target.value })}
+                className="border rounded px-2 py-1.5 text-sm flex-1" />
+              <button onClick={async () => {
+                setSaving(true)
+                const created = await adminService.createPlan({
+                  code: form.code,
+                  name: form.name || form.code,
+                  description: form.description,
+                  priceMinor: parseInt(form.price) || 0,
+                  currency: form.currency,
+                  billingInterval: form.billingInterval as 'month' | 'year' | 'one_time',
+                })
+                if (created.error) setError(created.error)
+                else if (created.data && form.featureCode.trim()) {
+                  const f = await adminService.setPlanFeature(created.data, form.featureCode.trim(), true)
+                  if (f.error) setError(f.error)
+                }
+                setSaving(false)
+                setShowCreate(false)
+                setForm({ code: '', name: '', description: '', price: '0', currency: 'USD', billingInterval: 'month', featureCode: '' })
+                await refresh()
+              }} disabled={saving}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm disabled:opacity-50">
+                {saving ? 'Saving…' : 'Create Plan'}
               </button>
             </div>
           </div>
@@ -187,56 +129,57 @@ export default function AdminPlansPage() {
         {loading ? (
           <div>Loading...</div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
+            <table className="min-w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Description</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Monthly</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Yearly</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Features</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Billing</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Features</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Toggle Feature</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
-                {plans.map(plan => (
-                  <tr key={plan.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{plan.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{plan.description || '-'}</td>
-                    <td className="px-4 py-3">${plan.price_monthly}/mo</td>
-                    <td className="px-4 py-3">${plan.price_yearly}/yr</td>
+              <tbody className="divide-y divide-gray-200">
+                {plans.map((plan) => (
+                  <tr key={plan.id}>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {(plan.features || []).map(f => (
-                          <span key={f} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{f}</span>
-                        ))}
-                      </div>
+                      <span className="font-medium">{plan.name}</span>
+                      <span className="block text-xs text-gray-400">{plan.code}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded ${plan.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {plan.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {(plan.price_minor / 100).toFixed(2)} {plan.currency}
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">{plan.billing_interval}</td>
+                    <td className="px-4 py-3 text-sm">{plan.features.join(', ') || '—'}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={() => openEdit(plan)} className="text-blue-600 hover:underline text-sm">Edit</button>
-                        <button onClick={() => handleToggleActive(plan)} className="text-orange-600 hover:underline text-sm">
-                          {plan.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                      </div>
+                      <FeatureToggle planId={plan.id} onDone={refresh} />
                     </td>
                   </tr>
                 ))}
-                {plans.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">No plans yet</td></tr>
-                )}
               </tbody>
             </table>
           </div>
         )}
+        <Link href="/admin" className="text-blue-600 hover:underline inline-block">← Admin home</Link>
       </div>
     </AppLayout>
+  )
+}
+
+function FeatureToggle({ planId, onDone }: { planId: string; onDone: () => Promise<void> }) {
+  const [code, setCode] = useState('')
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input placeholder="feature code" value={code}
+        onChange={(e) => setCode(e.target.value)}
+        className="border rounded px-1.5 py-1 text-xs w-28" />
+      <button onClick={async () => {
+        if (!code.trim()) return
+        // toggle semantics: enable when absent, disable when present in plan
+        void adminService.setPlanFeature(planId, code.trim(), true).then(onDone)
+        setCode('')
+      }} className="text-blue-600 text-xs hover:text-blue-800">enable</button>
+    </span>
   )
 }

@@ -1,42 +1,47 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
-import type { ServiceData, Invite, InviteValidation } from '@/types'
+import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
+export interface InvitationPayload {
+  invitation_id: string
+  token: string
+  expires_at: string
+}
+
+export interface InvitationPreview {
+  org_name: string
+  org_slug: string
+  role: 'admin' | 'member'
+  inviter_name: string
+  expires_at: string
+}
+
 export class InviteService extends BaseRepository {
-  async generateInvite(
-    orgId: string,
+  /** Admin-only: mint an invitation; returned token MUST be delivered to the invitee. */
+  async inviteMember(
     email: string,
-    role: string = 'member'
-  ): ServiceData<Invite> {
-    return this.callRpc<Invite>(Rpc.Invite.Create, {
-      p_organization_id: orgId,
+    role: 'admin' | 'member' = 'member',
+    orgId?: string
+  ): ServiceData<InvitationPayload> {
+    return this.callRpc<InvitationPayload>(Rpc.Invite.Create, {
       p_email: email,
       p_role: role,
+      p_org_id: orgId,
     })
   }
 
-  async getInvites(orgId: string): ServiceData<Invite[]> {
-    return this.callRpc<Invite[]>(Rpc.Invite.GetMany, {
-      p_organization_id: orgId,
-    })
+  /** Anonymous-safe: preview before login. Token is the credential. */
+  async getInvitationPreview(token: string): ServiceData<InvitationPreview> {
+    return this.callRpc<InvitationPreview>(Rpc.Invite.Preview, { p_token: token })
   }
 
-  async validateInvite(token: string): ServiceData<InviteValidation[]> {
-    return this.callRpc<InviteValidation[]>(Rpc.Invite.Validate, {
-      p_token: token,
-    })
+  /** Authenticated: email on the invitation must match the logged-in user. */
+  async acceptInvitation(token: string): ServiceData<string> {
+    return this.callRpc<string>(Rpc.Invite.Accept, { p_token: token })
   }
 
-  async acceptInvite(token: string): ServiceData<boolean> {
-    return this.callRpc<boolean>(Rpc.Invite.Accept, {
-      p_token: token,
-    })
-  }
-
-  async revokeInvite(inviteId: string): ServiceData<boolean> {
-    return this.callRpc<boolean>(Rpc.Invite.Revoke, {
-      p_invite_id: inviteId,
-    })
+  async revokeInvitation(invitationId: string): ServiceData<void> {
+    return this.callRpc<void>(Rpc.Invite.Revoke, { p_invitation_id: invitationId })
   }
 }
 

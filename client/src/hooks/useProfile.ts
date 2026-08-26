@@ -1,38 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from './useAuth'
+import { useCallback, useState } from 'react'
 import { profileService } from '@/services/ProfileService'
-import type { UserProfile } from '@/types'
+import type { ServiceData } from '@/types'
+import type { UpdatedProfile } from '@/services/ProfileService'
 
 export function useProfile() {
-  const { user } = useAuth()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const load = useCallback(async () => {
-    const { data } = await profileService.getMyProfile()
-    if (data) setProfile(data)
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const saveFullName = useCallback(
-    async (fullName: string) => {
+  const updateProfile = useCallback(
+    async (
+      displayName?: string,
+      avatarUrl?: string
+    ): Promise<ServiceData<UpdatedProfile>> => {
       setSaving(true)
-      try {
-        await profileService.updateMyProfile({ full_name: fullName })
-        await load()
-      } finally {
-        setSaving(false)
-      }
+      const result = await profileService.updateMyProfile(displayName, avatarUrl)
+      setSaving(false)
+      return result
     },
-    [load]
+    []
   )
 
-  return { user, profile, loading, saving, saveFullName }
+  return { updateProfile, saving }
 }

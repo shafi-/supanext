@@ -1,71 +1,34 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { subscriptionService } from '@/services/SubscriptionService'
-import { subscriptionPlanService } from '@/services/SubscriptionPlanService'
-import type { CurrentSubscription, SubscriptionPlan, SubscriptionHistoryView } from '@/types'
+import { useCallback, useEffect, useState } from 'react'
+import { subscriptionService, type CurrentSubscription } from '@/services/SubscriptionService'
 
-export function useBilling(orgId: string) {
-  const [currentPlan, setCurrentPlan] = useState<CurrentSubscription | null>(null)
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
-  const [history, setHistory] = useState<SubscriptionHistoryView[]>([])
+/**
+ * Read-only billing view for members.
+ * Plan assignment/deactivation is system-administered (see AdminService) —
+ * the database rejects member/org-admin mutations regardless of UI.
+ */
+export function useBilling(orgId?: string) {
+  const [billing, setBilling] = useState<CurrentSubscription | null>(null)
   const [loading, setLoading] = useState(true)
-  const [purchasing, setPurchasing] = useState<string | null>(null)
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly')
+  const [error, setError] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    const [currentResult, plansResult, historyResult] = await Promise.all([
-      subscriptionService.getMySubscription(orgId),
-      subscriptionService.getPlans(),
-      subscriptionPlanService.getHistory(orgId),
-    ])
-
-    if (currentResult.data) setCurrentPlan(currentResult.data as unknown as CurrentSubscription)
-    if (plansResult.data) setPlans(plansResult.data as unknown as SubscriptionPlan[])
-    if (historyResult.data) setHistory(historyResult.data as unknown as SubscriptionHistoryView[])
-
+  const refresh = useCallback(async () => {
+    if (!orgId) {
+      setBilling(null)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    const { data, error: err }= await subscriptionService.getCurrentSubscription(orgId)
+    setBilling(data)
+    setError(err)
     setLoading(false)
   }, [orgId])
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    void refresh()
+  }, [refresh])
 
-  const subscribe = useCallback(
-    async (planId: string) => {
-      setPurchasing(planId)
-      const { error } = await subscriptionService.subscribe(orgId, planId, billingPeriod)
-      if (!error) await loadData()
-      setPurchasing(null)
-    },
-    [orgId, billingPeriod, loadData]
-  )
-
-  const changePlan = useCallback(
-    async (planId: string) => {
-      setPurchasing(planId)
-      const { error } = await subscriptionService.changePlan(orgId, planId, billingPeriod)
-      if (!error) await loadData()
-      setPurchasing(null)
-    },
-    [orgId, billingPeriod, loadData]
-  )
-
-  const cancel = useCallback(async () => {
-    await subscriptionService.cancel(orgId)
-    await loadData()
-  }, [orgId, loadData])
-
-  return {
-    currentPlan,
-    plans,
-    history,
-    loading,
-    purchasing,
-    billingPeriod,
-    setBillingPeriod,
-    subscribe,
-    changePlan,
-    cancel,
-  }
+  return { billing, loading, error, refresh }
 }

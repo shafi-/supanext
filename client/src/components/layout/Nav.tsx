@@ -26,7 +26,6 @@ export function Nav() {
                 {currentOrg && (
                   <>
                     <Link href={`/orgs?id=${currentOrg.id}`} className="text-gray-600 hover:text-gray-900">Dashboard</Link>
-                    <Link href={`/orgs?id=${currentOrg.id}`} className="text-gray-600 hover:text-gray-900">Todos</Link>
                     <Link href={`/orgs?id=${currentOrg.id}`} className="text-gray-600 hover:text-gray-900">Members</Link>
                   </>
                 )}

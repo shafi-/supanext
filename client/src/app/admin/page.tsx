@@ -4,19 +4,25 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { adminService } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useState, useEffect } from 'react'
-import type { SystemStats } from '@/types'
 import Link from 'next/link'
+
+interface AdminOrgRow {
+  id: string
+  name: string
+  slug: string
+  status: string
+}
 
 export default function AdminPage() {
   const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
-  const [stats, setStats] = useState<SystemStats | null>(null)
+  const [orgs, setOrgs] = useState<AdminOrgRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (isSystemAdmin) {
       const load = async () => {
-        const { data } = await adminService.getSystemStats()
-        if (data) setStats(data)
+        const { data } = await adminService.listAllOrganizations()
+        if (data) setOrgs(data)
         setLoading(false)
       }
       load()
@@ -41,30 +47,28 @@ export default function AdminPage() {
 
   if (loading) return <AppLayout><div>Loading...</div></AppLayout>
 
+  const pending = orgs.filter((o) => o.status === 'pending').length
+  const active = orgs.filter((o) => o.status === 'active').length
+  const suspended = orgs.filter((o) => o.status === 'suspended').length
+
   return (
     <AppLayout>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">System Admin</h1>
-        {stats && (
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <p className="text-sm text-gray-500">Organizations</p>
-              <p className="text-2xl font-bold">{stats.total_orgs}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <p className="text-sm text-gray-500">Users</p>
-              <p className="text-2xl font-bold">{stats.total_users}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <p className="text-sm text-gray-500">Members</p>
-              <p className="text-2xl font-bold">{stats.total_members}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <p className="text-sm text-gray-500">Recent Signups</p>
-              <p className="text-2xl font-bold">{stats.recent_signups}</p>
-            </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="bg-white p-4 rounded-lg shadow">
+            <p className="text-sm text-gray-500">Pending Approval</p>
+            <p className="text-2xl font-bold">{pending}</p>
           </div>
-        )}
+          <div className="bg-white p-4 rounded-lg shadow">
+            <p className="text-sm text-gray-500">Active Orgs</p>
+            <p className="text-2xl font-bold">{active}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <p className="text-sm text-gray-500">Suspended</p>
+            <p className="text-2xl font-bold">{suspended}</p>
+          </div>
+        </div>
         <Link href="/admin/orgs" className="text-blue-600 hover:underline">
           Manage Organizations
         </Link>

@@ -1,58 +1,22 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
-import type {
-  ServiceData,
-  OrganizationSubscription,
-  CurrentSubscription,
-  SubscriptionPlan,
-} from '@/types'
+import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
+export interface CurrentSubscription {
+  id?: string
+  plan_id?: string
+  plan_code?: string
+  plan_name?: string
+  status?: 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired'
+  starts_at?: string
+  ends_at?: string
+  features: string[]
+}
+
+/** Read-only for members. Assignment/deactivation lives in AdminService (system-admin only). */
 export class SubscriptionService extends BaseRepository {
-  async getPlans(): ServiceData<SubscriptionPlan[]> {
-    return this.callRpc<SubscriptionPlan[]>(Rpc.Subscription.GetPlans)
-  }
-
-  async getMySubscription(orgId: string): ServiceData<CurrentSubscription> {
-    return this.callRpc<CurrentSubscription>(Rpc.Subscription.GetMy, {
-      p_org_id: orgId,
-    })
-  }
-
-  async subscribe(
-    orgId: string,
-    planId: string,
-    billingPeriod: 'monthly' | 'yearly'
-  ): ServiceData<OrganizationSubscription> {
-    return this.callRpc<OrganizationSubscription>(Rpc.Subscription.Subscribe, {
-      p_org_id: orgId,
-      p_plan_id: planId,
-      p_billing_period: billingPeriod,
-    })
-  }
-
-  async changePlan(
-    orgId: string,
-    newPlanId: string,
-    billingPeriod: 'monthly' | 'yearly'
-  ): ServiceData<OrganizationSubscription> {
-    return this.callRpc<OrganizationSubscription>(Rpc.Subscription.ChangePlan, {
-      p_org_id: orgId,
-      p_new_plan_id: newPlanId,
-      p_billing_period: billingPeriod,
-    })
-  }
-
-  async cancel(orgId: string): ServiceData<boolean> {
-    return this.callRpc<boolean>(Rpc.Subscription.Cancel, {
-      p_org_id: orgId,
-    })
-  }
-
-  async hasFeature(orgId: string, feature: string): ServiceData<boolean> {
-    return this.callRpc<boolean>(Rpc.Subscription.HasFeature, {
-      p_org_id: orgId,
-      p_feature: feature,
-    })
+  async getCurrentSubscription(orgId?: string): ServiceData<CurrentSubscription> {
+    return this.callRpc<CurrentSubscription>(Rpc.Subscription.GetCurrent, { p_org_id: orgId })
   }
 }
 

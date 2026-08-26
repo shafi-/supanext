@@ -1,40 +1,43 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
-import type { ServiceData, MemberView, Membership } from '@/types'
+import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
 export class MemberService extends BaseRepository {
-  async getMembers(orgId: string): ServiceData<MemberView[]> {
-    return this.callRpc<MemberView[]>(Rpc.Member.GetMany, {
-      target_org_id: orgId,
+  async getMembers(orgId?: string): ServiceData<
+    Array<{
+      user_id: string
+      email: string
+      display_name: string | null
+      role: 'admin' | 'member'
+      permissions: string[]
+    }>
+  > {
+    return this.callRpc(Rpc.Member.GetMany, { p_org_id: orgId })
+  }
+
+  async changeMemberRole(userId: string, role: 'admin' | 'member', orgId?: string): ServiceData<void> {
+    return this.callRpc<void>(Rpc.Member.ChangeRole, {
+      p_user_id: userId,
+      p_role: role,
+      p_org_id: orgId,
     })
   }
 
-  async addMember(orgId: string, email: string, role: string = 'member'): ServiceData<MemberView> {
-    return this.callRpc<MemberView>(Rpc.Member.Add, {
-      target_org_id: orgId,
-      target_user_email: email,
-      member_role: role,
-    })
+  async removeMember(userId: string, orgId?: string): ServiceData<void> {
+    return this.callRpc<void>(Rpc.Member.Remove, { p_user_id: userId, p_org_id: orgId })
   }
 
-  async removeMember(orgId: string, userId: string): ServiceData<boolean> {
-    return this.callRpc<boolean>(Rpc.Member.Remove, {
-      target_org_id: orgId,
-      target_user_id: userId,
-    })
-  }
-
-  async updateMemberRole(orgId: string, userId: string, newRole: string): ServiceData<MemberView> {
-    return this.callRpc<MemberView>(Rpc.Member.UpdateRole, {
-      target_org_id: orgId,
-      target_user_id: userId,
-      new_role: newRole,
-    })
-  }
-
-  async getMembership(orgId: string): ServiceData<Membership[]> {
-    return this.callRpc<Membership[]>(Rpc.Member.GetMembership, {
-      target_org_id: orgId,
+  async setMemberPermission(
+    userId: string,
+    permission: string,
+    granted: boolean,
+    orgId?: string
+  ): ServiceData<void> {
+    return this.callRpc<void>(Rpc.Member.SetPermission, {
+      p_user_id: userId,
+      p_permission: permission,
+      p_granted: granted,
+      p_org_id: orgId,
     })
   }
 }

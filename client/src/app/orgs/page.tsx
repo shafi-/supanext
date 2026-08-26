@@ -6,15 +6,12 @@ import { useOrganization } from '@/hooks/useOrganization'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useRequiredParam, isUuid } from '@/hooks/useQueryParam'
 import { useSubscription } from '@/hooks/useSubscription'
-import { useBilling } from '@/hooks/useBilling'
-import { organizationService } from '@/services/OrganizationService'
-import { todoService } from '@/services/TodoService'
+import { organizationService, type OrganizationStatus } from '@/services/OrganizationService'
 import { memberService } from '@/services/MemberService'
-import { inviteService } from '@/services/InviteService'
+import { inviteService, type InvitationPayload } from '@/services/InviteService'
 import { useState, useEffect, useCallback, Suspense } from 'react'
-import Link from 'next/link'
-import type { Todo, MemberView, Invite } from '@/types'
 import { BillingTab } from '@/components/subscription/BillingTab'
+import Link from 'next/link'
 
 export default function OrgsPage() {
   return (
@@ -33,24 +30,15 @@ export default function OrgsPage() {
 function OrgsContent() {
   useRequireAuth()
   const orgId = useRequiredParam('id')
-  const { currentOrg, setCurrentOrg, loading: orgLoading } = useOrganization()
+  const { currentOrg, loading: orgLoading } = useOrganization()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!orgId) {
-      setCurrentOrg(null)
-      return
-    }
+    if (!orgId) return
     if (!isUuid(orgId)) {
       setError('Invalid organization ID')
-      return
     }
-    setError(null)
-    organizationService.getOrganization(orgId).then(({ data, error: err }) => {
-      if (err) setError(err)
-      if (data) setCurrentOrg(data)
-    })
-  }, [orgId, setCurrentOrg])
+  }, [orgId])
 
   return (
     <AppLayout>
@@ -66,330 +54,327 @@ function OrgsContent() {
 
 function OrgList() {
   const { organizations, loading } = useOrganization()
-  if (loading) return <div>Loading...</div>
-  return (
-    <>
-      <h1 className="text-2xl font-bold">Organizations</h1>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {organizations.map((org) => (
-          <Link key={org.id} href={`/orgs?id=${org.id}`} className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
-            <h2 className="font-semibold text-lg">{org.name}</h2>
-            <p className="text-gray-600 text-sm mt-1">{org.description ?? 'No description'}</p>
-            <p className="text-gray-500 text-xs mt-2">{org.member_count} members</p>
-          </Link>
-        ))}
-        {organizations.length === 0 && <p className="text-gray-500 col-span-full">No organizations yet.</p>}
-      </div>
-    </>
-  )
-}
-
-function OrgDetail({ orgId }: { orgId: string }) {
-  const { currentOrg } = useOrganization()
-  const { isOrgAdmin, isOrgOwner } = usePermissions()
-  const { hasFeature } = useSubscription(orgId)
-  const [tab, setTab] = useState<'todos' | 'members' | 'settings' | 'billing'>('todos')
-  if (!currentOrg) return null
-  return (
-    <>
-      <h1 className="text-2xl font-bold">{currentOrg.name}</h1>
-      <p className="text-gray-600">{currentOrg.description ?? 'No description'}</p>
-      <div className="flex gap-4 border-b mb-4">
-        {hasFeature('todos') && (
-          <button onClick={() => setTab('todos')} className={`pb-2 ${tab === 'todos' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Todos</button>
-        )}
-        {hasFeature('members') && (
-          <button onClick={() => setTab('members')} className={`pb-2 ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Members</button>
-        )}
-        {hasFeature('settings') && isOrgAdmin() && (
-          <button onClick={() => setTab('settings')} className={`pb-2 ${tab === 'settings' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Settings</button>
-        )}
-        {isOrgOwner() && (
-          <button onClick={() => setTab('billing')} className={`pb-2 ${tab === 'billing' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Billing</button>
-        )}
-      </div>
-      {tab === 'todos' && hasFeature('todos') && <TodosTab orgId={orgId} />}
-      {tab === 'members' && hasFeature('members') && <MembersTab orgId={orgId} />}
-      {tab === 'settings' && hasFeature('settings') && <SettingsTab orgId={orgId} />}
-      {tab === 'billing' && isOrgOwner() && <BillingSection orgId={orgId} />}
-    </>
-  )
-}
-
-function BillingSection({ orgId }: { orgId: string }) {
-  const { isOrgOwner } = usePermissions()
-  const billing = useBilling(orgId)
-  return (
-    <BillingTab
-      currentPlan={billing.currentPlan}
-      plans={billing.plans}
-      history={billing.history}
-      loading={billing.loading}
-      purchasing={billing.purchasing}
-      billingPeriod={billing.billingPeriod}
-      isOwner={isOrgOwner()}
-      onBillingPeriodChange={billing.setBillingPeriod}
-      onSubscribe={billing.subscribe}
-      onChangePlan={billing.changePlan}
-      onCancel={billing.cancel}
-    />
-  )
-}
-
-function TodosTab({ orgId }: { orgId: string }) {
-  const [todos, setTodos] = useState<Todo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [newTitle, setNewTitle] = useState('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    const { data } = await todoService.getTodos(orgId)
-    if (data) setTodos(data)
-    setLoading(false)
-  }, [orgId])
-
-  useEffect(() => { load() }, [load])
+  const [name, setName] = useState('')
+  const [slug, setSlug] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    const title = newTitle.trim()
-    if (!title) return
-    await todoService.createTodo(orgId, title)
-    setNewTitle('')
-    load()
+    if (!name.trim() || !slug.trim()) return
+    setCreating(true)
+    setError(null)
+    const { error: err } = await organizationService.requestOrganization(
+      name.trim(),
+      slug.trim().toLowerCase()
+    )
+    setCreating(false)
+    if (err) {
+      setError(err)
+      return
+    }
+    setName('')
+    setSlug('')
   }
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={handleCreate} className="flex gap-2">
-        <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New todo..." className="flex-1 border rounded-md px-3 py-2" />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md">Add</button>
+    <>
+      <h1 className="text-2xl font-bold">Organizations</h1>
+
+      <form onSubmit={handleCreate} className="bg-white p-4 rounded-lg shadow space-y-3">
+        <p className="text-sm font-medium text-gray-700">Request a new organization</p>
+        <p className="text-xs text-gray-500">
+          Starts as pending — a system administrator approves it before it becomes usable.
+        </p>
+        <div className="flex flex-col md:flex-row gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="Organization name" className="flex-1 border rounded-md px-3 py-2" />
+          <input value={slug}
+            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+            placeholder="slug" pattern="[a-z0-9][a-z0-9-]*"
+            className="border rounded-md px-3 py-2 font-mono md:w-48" />
+          <button type="submit" disabled={creating}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+            {creating ? 'Creating…' : 'Create'}
+          </button>
+        </div>
+        {error && <p className="text-red-600 text-sm">{error}</p>}
       </form>
-      {loading ? <div>Loading...</div> : (
-        <ul className="space-y-2">
-          {todos.map((t) => (
-            <li key={t.id} className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-              <input type="checkbox" checked={t.completed} onChange={() => todoService.updateTodo(t.id, { completed: !t.completed }).then(load)} />
-              <span className={t.completed ? 'line-through text-gray-500' : ''}>{t.title}</span>
-              <button onClick={() => todoService.deleteTodo(t.id).then(load)} className="ml-auto text-red-600 hover:text-red-800">Delete</button>
-            </li>
+
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {organizations.map((org) => (
+            <Link key={org.id} href={`/orgs?id=${org.id}`}
+              className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-lg">{org.name}</h2>
+                <StatusBadge status={org.status} />
+              </div>
+              <p className="text-gray-500 text-xs mt-2">Role: {org.role}</p>
+            </Link>
           ))}
-          {todos.length === 0 && <p className="text-gray-500">No todos yet.</p>}
-        </ul>
+          {organizations.length === 0 && (
+            <p className="text-gray-500 col-span-full">No organizations yet.</p>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cls =
+    status === 'active' ? 'bg-green-100 text-green-800'
+    : status === 'pending' ? 'bg-yellow-100 text-yellow-800'
+    : status === 'suspended' ? 'bg-red-100 text-red-800'
+    : 'bg-gray-100 text-gray-600'
+  return <span className={`px-2 py-0.5 rounded-full text-xs ${cls}`}>{status}</span>
+}
+
+type Tab = 'overview' | 'members' | 'invites' | 'billing'
+
+function OrgDetail({ orgId }: { orgId: string }) {
+  const { currentOrg } = useOrganization()
+  const { isOrgAdmin } = usePermissions()
+  const { subscription, hasFeature } = useSubscription(orgId)
+  const [tab, setTab] = useState<Tab>('overview')
+
+  if (!currentOrg) return null
+
+  const fundraisingEnabled = hasFeature('fundraising')
+
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold">{currentOrg.name}</h1>
+        <StatusBadge status={currentOrg.status} />
+      </div>
+      {currentOrg.status !== 'active' && (
+        <p className="text-sm text-gray-500">
+          This organization is {currentOrg.status}. Most actions are unavailable until it becomes active.
+        </p>
+      )}
+      <div className="flex gap-4 border-b mb-4 overflow-x-auto">
+        <button onClick={() => setTab('overview')}
+          className={`pb-2 whitespace-nowrap ${tab === 'overview' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>
+          Overview
+        </button>
+        <button onClick={() => setTab('members')} disabled={!fundraisingEnabled}
+          className={`pb-2 whitespace-nowrap ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''} ${!fundraisingEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+          Members
+        </button>
+        {isOrgAdmin() && (
+          <button onClick={() => setTab('invites')} disabled={!fundraisingEnabled}
+            className={`pb-2 whitespace-nowrap ${tab === 'invites' ? 'border-b-2 border-blue-600 font-medium' : ''} ${!fundraisingEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+            Invitations
+          </button>
+        )}
+        <button onClick={() => setTab('billing')}
+          className={`pb-2 whitespace-nowrap ${tab === 'billing' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>
+          Billing
+        </button>
+      </div>
+      {tab === 'overview' && <OverviewTab orgId={orgId} />}
+      {tab === 'members' && fundraisingEnabled && <MembersTab orgId={orgId} />}
+      {tab === 'invites' && isOrgAdmin() && fundraisingEnabled && <InvitesTab orgId={orgId} />}
+      {tab === 'billing' && <BillingReadonly orgId={orgId} />}
+      {!fundraisingEnabled && tab !== 'overview' && tab !== 'billing' && null}
+      {subscription && !hasFeature('fundraising') && tab !== 'billing' && tab !== 'overview' && (
+        <p className="text-sm text-gray-400">Current plan does not include this feature.</p>
+      )}
+    </>
+  )
+}
+
+function OverviewTab({ orgId }: { orgId: string }) {
+  const [status, setStatus] = useState<OrganizationStatus | null>(null)
+
+  useEffect(() => {
+    organizationService.getOrganizationStatus().then(({ data }) => {
+      if (data) setStatus(data)
+    })
+  }, [orgId])
+
+  if (!status) return <div className="text-gray-500 text-sm">Loading status…</div>
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow space-y-2 max-w-xl">
+      <p><span className="text-gray-500 text-sm">Name:</span> {status.name}</p>
+      <p><span className="text-gray-500 text-sm">Status:</span> {status.status}</p>
+      {status.suspension_note && (
+        <p><span className="text-gray-500 text-sm">Note:</span> {status.suspension_note}</p>
       )}
     </div>
   )
 }
 
+interface MemberRow {
+  user_id: string
+  email: string
+  display_name: string | null
+  role: 'admin' | 'member'
+  permissions: string[]
+}
+
+const GRANTABLE_PERMISSIONS = [
+  'fundraising.view',
+  'fundraising.create',
+  'fundraising.update',
+  'fundraising.delete',
+]
+
 function MembersTab({ orgId }: { orgId: string }) {
   const { isOrgAdmin } = usePermissions()
-  const [members, setMembers] = useState<MemberView[]>([])
-  const [invites, setInvites] = useState<Invite[]>([])
+  const [members, setMembers] = useState<MemberRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [email, setEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState('member')
-  const [activeSubTab, setActiveSubTab] = useState<'members' | 'invites'>('members')
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [{ data: memberData }, { data: inviteData }] = await Promise.all([
-      memberService.getMembers(orgId),
-      isOrgAdmin() ? inviteService.getInvites(orgId) : Promise.resolve({ data: [] }),
-    ])
-    if (memberData) setMembers(memberData)
-    if (inviteData) setInvites(inviteData)
+    const { data, error: err } = await memberService.getMembers(orgId)
+    if (data) setMembers(data)
+    if (err) setError(err)
     setLoading(false)
-  }, [orgId, isOrgAdmin])
+  }, [orgId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const handleAddMember = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const val = email.trim()
-    if (!val) return
-    await memberService.addMember(orgId, val)
-    setEmail('')
-    load()
+  const handleRoleChange = async (userId: string, role: string) => {
+    const { error: err } = await memberService.changeMemberRole(userId, role as 'admin' | 'member', orgId)
+    if (err) setError(err)
+    await load()
   }
+
+  const handleRemove = async (userId: string) => {
+    const { error: err } = await memberService.removeMember(userId, orgId)
+    if (err) setError(err)
+    await load()
+  }
+
+  const handlePermission = async (userId: string, permission: string, granted: boolean) => {
+    const { error: err } = await memberService.setMemberPermission(userId, permission, granted, orgId)
+    if (err) setError(err)
+    await load()
+  }
+
+  if (loading) return <div>Loading...</div>
+
+  return (
+    <div className="space-y-4">
+      {error && <p className="text-red-600">{error}</p>}
+      <ul className="space-y-2">
+        {members.map((m) => (
+          <li key={m.user_id} className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <p className="font-medium">{m.display_name ?? m.email}</p>
+                <p className="text-sm text-gray-500">{m.email}</p>
+              </div>
+              {isOrgAdmin() ? (
+                <select value={m.role}
+                  onChange={(e) => handleRoleChange(m.user_id, e.target.value)}
+                  className="border rounded px-2 py-1 text-sm">
+                  <option value="admin">Admin</option>
+                  <option value="member">Member</option>
+                </select>
+              ) : (
+                <span className="text-sm text-gray-500">{m.role}</span>
+              )}
+              {isOrgAdmin() && m.role !== 'admin' && (
+                <button onClick={() => handleRemove(m.user_id)}
+                  className="text-red-600 hover:text-red-800 text-sm">Remove</button>
+              )}
+            </div>
+            {isOrgAdmin() && m.role === 'member' && (
+              <div className="mt-3 flex flex-wrap gap-3 pl-4 border-t pt-3">
+                {GRANTABLE_PERMISSIONS.map((perm) => (
+                  <label key={perm} className="inline-flex items-center gap-1.5 text-sm">
+                    <input type="checkbox"
+                      checked={m.permissions.includes(perm)}
+                      onChange={(e) => handlePermission(m.user_id, perm, e.target.checked)} />
+                    {perm.replace('fundraising.', '')}
+                  </label>
+                ))}
+              </div>
+            )}
+          </li>
+        ))}
+        {members.length === 0 && <p className="text-gray-500">No members yet.</p>}
+      </ul>
+    </div>
+  )
+}
+
+function InvitesTab({ orgId }: { orgId: string }) {
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<'admin' | 'member'>('member')
+  const [lastInvite, setLastInvite] = useState<(InvitationPayload & { email: string }) | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     const val = email.trim()
     if (!val) return
-    await inviteService.generateInvite(orgId, val, inviteRole)
+    setSending(true)
+    setError(null)
+    const { data, error: err } = await inviteService.inviteMember(val, role, orgId)
+    setSending(false)
+    if (err || !data) {
+      setError(err ?? 'Failed to create invitation')
+      return
+    }
+    setLastInvite({ ...data, email: val })
     setEmail('')
-    load()
   }
-
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    await memberService.updateMemberRole(orgId, userId, newRole)
-    load()
-  }
-
-  const handleRemoveMember = async (userId: string) => {
-    await memberService.removeMember(orgId, userId)
-    load()
-  }
-
-  if (loading) return <div>Loading...</div>
 
   return (
-    <div className="space-y-4">
-      {isOrgAdmin() && (
-        <div className="flex gap-2 border-b mb-4">
-          <button onClick={() => setActiveSubTab('members')} className={`pb-2 ${activeSubTab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Members</button>
-          <button onClick={() => setActiveSubTab('invites')} className={`pb-2 ${activeSubTab === 'invites' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>Pending Invites ({invites.length})</button>
+    <div className="space-y-4 max-w-2xl">
+      <form onSubmit={handleInvite} className="flex gap-2">
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="Invite by email…" className="flex-1 border rounded-md px-3 py-2" />
+        <select value={role} onChange={(e) => setRole(e.target.value as 'admin' | 'member')}
+          className="border rounded px-2 py-2">
+          <option value="member">Member</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button type="submit" disabled={sending}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+          {sending ? 'Inviting…' : 'Invite'}
+        </button>
+      </form>
+      {error && <p className="text-red-600">{error}</p>}
+
+      {lastInvite && (
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg space-y-2">
+          <p className="text-sm font-medium text-blue-900">
+            Invitation created for {lastInvite.email}.
+          </p>
+          <p className="text-xs text-blue-700">
+            Deliver this link yourself — the database never sends emails:
+          </p>
+          <code className="block bg-white p-2 rounded border text-xs break-all">
+            {typeof window !== 'undefined' &&
+              `${window.location.origin}/invite?token=${lastInvite.token}`}
+          </code>
+          <p className="text-xs text-blue-700">
+            Expires {new Date(lastInvite.expires_at).toLocaleString()}
+          </p>
         </div>
       )}
 
-      {activeSubTab === 'members' && (
-        <>
-          {isOrgAdmin() && (
-            <form onSubmit={handleAddMember} className="flex gap-2">
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Add member by email..." className="flex-1 border rounded-md px-3 py-2" />
-              <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md">Add</button>
-            </form>
-          )}
-          <ul className="space-y-2">
-            {members.map((m) => (
-              <li key={m.id} className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-                <div className="flex-1">
-                  <p className="font-medium">{m.full_name ?? m.email}</p>
-                  <p className="text-sm text-gray-500">{m.email}</p>
-                </div>
-                {isOrgAdmin() ? (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={m.role}
-                      onChange={(e) => handleRoleChange(m.user_id, e.target.value)}
-                      className="border rounded px-2 py-1 text-sm"
-                    >
-                      <option value="viewer">Viewer</option>
-                      <option value="member">Member</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    <button onClick={() => handleRemoveMember(m.user_id)} className="text-red-600 hover:text-red-800 text-sm">Remove</button>
-                  </div>
-                ) : (
-                  <span className="text-sm text-gray-500">{m.role}</span>
-                )}
-              </li>
-            ))}
-            {members.length === 0 && <p className="text-gray-500">No members yet.</p>}
-          </ul>
-        </>
-      )}
-
-      {activeSubTab === 'invites' && isOrgAdmin() && (
-        <>
-          <form onSubmit={handleInvite} className="flex gap-2">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Invite by email..." className="flex-1 border rounded-md px-3 py-2" />
-            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="border rounded px-2 py-2">
-              <option value="viewer">Viewer</option>
-              <option value="member">Member</option>
-              <option value="admin">Admin</option>
-            </select>
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md">Invite</button>
-          </form>
-          <ul className="space-y-2">
-            {invites.map((inv) => (
-              <li key={inv.id} className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-                <div className="flex-1">
-                  <p className="font-medium">{inv.email}</p>
-                  <p className="text-sm text-gray-500">Role: {inv.role} · Expires: {new Date(inv.expires_at).toLocaleDateString()}</p>
-                </div>
-                <button
-                  onClick={async () => {
-                    await inviteService.revokeInvite(inv.id)
-                    load()
-                  }}
-                  className="text-red-600 hover:text-red-800 text-sm"
-                >
-                  Revoke
-                </button>
-              </li>
-            ))}
-            {invites.length === 0 && <p className="text-gray-500">No pending invites.</p>}
-          </ul>
-        </>
-      )}
+      <p className="text-sm text-gray-500">
+        Pending invitation tracking is not available yet — store the link when you mint it.
+      </p>
     </div>
   )
 }
 
-function SettingsTab({ orgId }: { orgId: string }) {
-  const { currentOrg, refreshOrg } = useOrganization()
-  const { isOrgAdmin } = usePermissions()
-  const [name, setName] = useState(currentOrg?.name ?? '')
-  const [slug, setSlug] = useState(currentOrg?.slug ?? '')
-  const [description, setDescription] = useState(currentOrg?.description ?? '')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    if (currentOrg) {
-      setName(currentOrg.name)
-      setSlug(currentOrg.slug)
-      setDescription(currentOrg.description ?? '')
-    }
-  }, [currentOrg])
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return
-    setSaving(true)
-    try {
-      const { error } = await organizationService.updateOrganization(orgId, {
-        name: name.trim(),
-        slug: slug.trim(),
-        description: description.trim() || undefined,
-      })
-      if (error) {
-        setSaving(false)
-        return
-      }
-      await refreshOrg()
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch {
-      // Error already handled by service
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (!isOrgAdmin()) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">Only admins and owners can manage organization settings.</p>
-      </div>
-    )
-  }
-
-  return (
-    <form onSubmit={handleSave} className="bg-white p-6 rounded-lg shadow space-y-4 max-w-lg">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" required />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Slug</label>
-        <input
-          value={slug}
-          onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-          pattern="[a-z0-9\-]+"
-          className="mt-1 block w-full border rounded-md px-3 py-2 font-mono"
-          required
-        />
-        <p className="mt-1 text-xs text-gray-500">Used in public URL: /orgs/public/?slug={slug}</p>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Description</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" rows={3} />
-      </div>
-      <button type="submit" disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
-        {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
-      </button>
-    </form>
-  )
+function BillingReadonly({ orgId }: { orgId: string }) {
+  const { subscription, loading, error } = useSubscription(orgId)
+  return <BillingTab subscription={subscription} loading={loading} error={error} />
 }

@@ -126,14 +126,17 @@ export class SupabaseClientManager {
     })
   }
 
-  // Database function wrapper
-  public async rpc<T = any>(
-    functionName: string,
+  /**
+   * Database function wrapper.
+   * All functions live in the exposed `api` schema; .schema() makes PostgREST
+   * route via Accept-Profile/Content-Profile headers automatically.
+   */
+  public async rpc<T = unknown>(
+    functionName: keyof Database['api']['Functions'],
     params?: Record<string, unknown>
   ): Promise<{ data: T | null; error: string | null }> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await supabase.rpc(functionName as any, params as any)
+      const { data, error } = await supabase.schema('api').rpc(functionName, params)
 
       if (error) {
         console.error(`RPC error (${functionName}):`, error.message)

@@ -1,49 +1,64 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
-import type { ServiceData, OrganizationView, OrganizationDetailView } from '@/types'
+import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
+export interface SessionOrganization {
+  id: string
+  name: string
+  slug: string
+  status: 'pending' | 'active' | 'suspended' | 'rejected'
+  role: 'admin' | 'member'
+  is_active_selection: boolean
+}
+
+export interface SessionContext {
+  user_id: string
+  is_system_admin: boolean
+  active_organization_id: string | null
+  organizations: SessionOrganization[]
+}
+
+export interface OrganizationStatus {
+  id: string
+  name: string
+  status: string
+  suspension_note: string | null
+}
+
+export interface PublicOrganization {
+  name: string
+  slug: string
+  status: 'active' | 'suspended'
+  member_count: number
+  campaign_count: number
+  created_at: string
+}
+
 export class OrganizationService extends BaseRepository {
-  async createOrganization(
-    name: string,
-    slug: string,
-    description?: string,
-    settings?: Record<string, unknown>
-  ): ServiceData<OrganizationView> {
-    return this.callRpc<OrganizationView>(Rpc.Org.Create, {
-      org_name: name,
-      org_slug: slug,
-      org_description: description,
-      org_settings: settings,
-    })
+  /** Request a new organization — creator becomes its admin; starts pending. */
+  async requestOrganization(name: string, slug: string): ServiceData<string> {
+    return this.callRpc<string>(Rpc.Org.Request, { p_name: name, p_slug: slug })
   }
 
-  async getMyOrganizations(): ServiceData<OrganizationView[]> {
-    return this.callRpc<OrganizationView[]>(Rpc.Org.GetMy)
+  async getMyOrganizations(): ServiceData<SessionOrganization[]> {
+    return this.callRpc<SessionOrganization[]>(Rpc.Session.GetMyOrgs)
   }
 
-  async getOrganization(orgId: string): ServiceData<OrganizationDetailView> {
-    return this.callRpc<OrganizationDetailView>(Rpc.Org.Get, {
-      target_org_id: orgId,
-    })
+  async getSessionContext(): ServiceData<SessionContext> {
+    return this.callRpc<SessionContext>(Rpc.Session.GetContext)
   }
 
-  async updateOrganization(
-    orgId: string,
-    data: { name?: string; slug?: string; description?: string; settings?: Record<string, unknown> }
-  ): ServiceData<OrganizationView> {
-    return this.callRpc<OrganizationView>(Rpc.Org.Update, {
-      target_org_id: orgId,
-      new_name: data.name,
-      new_slug: data.slug,
-      new_description: data.description,
-      new_settings: data.settings,
-    })
+  async setActiveOrganization(orgId: string): ServiceData<{ active_organization_id: string }> {
+    return this.callRpc(Rpc.Session.SetActiveOrg, { p_org_id: orgId })
   }
 
-  async deleteOrganization(orgId: string): ServiceData<boolean> {
-    return this.callRpc<boolean>(Rpc.Org.Delete, {
-      target_org_id: orgId,
-    })
+  async getOrganizationStatus(): ServiceData<OrganizationStatus> {
+    return this.callRpc<OrganizationStatus>(Rpc.Org.GetStatus)
+  }
+
+  /** Anonymous-safe public directory (active + suspended orgs). */
+  async listPublicOrganizations(limit = 50): ServiceData<PublicOrganization[]> {
+    return this.callRpc<PublicOrganization[]>(Rpc.Org.ListPublic, { p_limit: limit })
   }
 }
 

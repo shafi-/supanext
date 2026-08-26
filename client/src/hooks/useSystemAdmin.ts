@@ -1,9 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
-import { adminService } from '@/services/AdminService'
+import { organizationService } from '@/services/OrganizationService'
+import { useCallback, useEffect, useState } from 'react'
 
+/**
+ * System-admin flag comes from api.get_session_context — the security.*
+ * helpers are intentionally not exposed over HTTP.
+ */
 export function useSystemAdmin() {
   const { user } = useAuth()
   const [isSystemAdmin, setIsSystemAdmin] = useState(false)
@@ -15,14 +19,14 @@ export function useSystemAdmin() {
       setLoading(false)
       return
     }
-
-    const { data } = await adminService.isSystemAdmin()
-    setIsSystemAdmin(data === true)
+    setLoading(true)
+    const { data } = await organizationService.getSessionContext()
+    setIsSystemAdmin(data?.is_system_admin === true)
     setLoading(false)
   }, [user])
 
   useEffect(() => {
-    checkAdmin()
+    void checkAdmin()
   }, [checkAdmin])
 
   return { isSystemAdmin, loading, refetch: checkAdmin }

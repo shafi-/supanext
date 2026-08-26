@@ -2,7 +2,6 @@ export type { Database } from './database'
 export type { User, UserProfile, UpdateProfileDto } from './user'
 export type { Organization, OrganizationView, OrganizationDetailView, CreateOrganizationDto, UpdateOrganizationDto } from './organization'
 export type { Member, MemberView, Membership } from './member'
-export type { Todo, CreateTodoDto, UpdateTodoDto } from './todo'
 export type { Invite, InviteValidation, CreateInviteDto } from './invite'
 export type { SystemStats } from './system'
 export type {

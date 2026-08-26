@@ -44,18 +44,23 @@ function InviteContent() {
 
     let cancelled = false
     async function validate() {
-      const { data, error } = await inviteService.validateInvite(token!)
+      // Anonymous-safe preview: token itself is the credential.
+      const { data, error } = await inviteService.getInvitationPreview(token!)
       if (cancelled) return
       if (error) {
-        setStatus('error')
-        setErrorMsg(error)
+        if (error.includes('invalid or expired')) {
+          setStatus('expired')
+        } else {
+          setStatus('error')
+          setErrorMsg(error)
+        }
         return
       }
-      if (!data || data.length === 0) {
+      if (!data) {
         setStatus('expired')
         return
       }
-      setOrgName(data[0].org_name)
+      setOrgName(data.org_name)
       setStatus('valid')
     }
     validate()
@@ -65,7 +70,7 @@ function InviteContent() {
   const handleAccept = async () => {
     if (!token) return
     setStatus('loading')
-    const { error } = await inviteService.acceptInvite(token)
+    const { error } = await inviteService.acceptInvitation(token)
     if (error) {
       setStatus('error')
       setErrorMsg(error)
