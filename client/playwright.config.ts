@@ -37,7 +37,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npx -y serve@latest out -l 3000 -s',
+    command: 'npx -y serve@latest out -l 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 120000,

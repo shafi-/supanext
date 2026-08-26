@@ -6,7 +6,11 @@ import { useOrganization } from '@/hooks/useOrganization'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useRequiredParam, isUuid } from '@/hooks/useQueryParam'
 import { useSubscription } from '@/hooks/useSubscription'
-import { organizationService, type OrganizationStatus } from '@/services/OrganizationService'
+import {
+  organizationService,
+  type OrganizationStatus,
+  type SessionOrganization,
+} from '@/services/OrganizationService'
 import { memberService } from '@/services/MemberService'
 import { inviteService, type InvitationPayload } from '@/services/InviteService'
 import { useState, useEffect, useCallback, Suspense } from 'react'
@@ -31,7 +35,8 @@ export default function OrgsPage() {
 function OrgsContent() {
   useRequireAuth()
   const orgId = useRequiredParam('id')
-  const { currentOrg, loading: orgLoading } = useOrganization()
+  const { currentOrg, organizations, loading: orgLoading, switchOrg, refresh } =
+    useOrganization()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -41,20 +46,36 @@ function OrgsContent() {
     }
   }, [orgId])
 
+  // Deep-link support: resolve the org from memberships, not just the
+  // server-side active selection.
+  const selectedOrg = organizations.find((o) => o.id === orgId) ?? null
+
   return (
     <AppLayout>
       <div className="space-y-6">
         {!orgId && <OrgList />}
         {orgId && error && <div className="text-red-600">{error}</div>}
-        {orgId && !error && currentOrg && <OrgDetail orgId={orgId} />}
-        {orgId && !error && !currentOrg && orgLoading && <div>Loading...</div>}
+        {orgId && !error && selectedOrg && (
+          <OrgDetail
+            org={selectedOrg}
+            isActive={currentOrg?.id === orgId}
+            onActivate={async () => {
+              await switchOrg(orgId)
+              await refresh()
+            }}
+          />
+        )}
+        {orgId && !error && !selectedOrg && orgLoading && <div>Loading...</div>}
+        {orgId && !error && !selectedOrg && !orgLoading && (
+          <p className="text-gray-500">You are not a member of this organization.</p>
+        )}
       </div>
     </AppLayout>
   )
 }
 
 function OrgList() {
-  const { organizations, loading } = useOrganization()
+  const { organizations, loading, refresh } = useOrganization()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [creating, setCreating] = useState(false)
@@ -76,6 +97,7 @@ function OrgList() {
     }
     setName('')
     setSlug('')
+    await refresh()
   }
 
   return (
@@ -136,25 +158,37 @@ function StatusBadge({ status }: { status: string }) {
 
 type Tab = 'overview' | 'campaigns' | 'members' | 'invites' | 'billing'
 
-function OrgDetail({ orgId }: { orgId: string }) {
-  const { currentOrg } = useOrganization()
-  const { isOrgAdmin } = usePermissions()
-  const { subscription, hasFeature } = useSubscription(orgId)
+function OrgDetail({
+  org,
+  isActive,
+  onActivate,
+}: {
+  org: SessionOrganization
+  isActive: boolean
+  onActivate: () => Promise<void>
+}) {
+  // Role is scoped to the SELECTED organization, not the active one.
+  const isOrgAdmin = org.role === 'admin'
+  const { subscription, hasFeature } = useSubscription(org.id)
   const [tab, setTab] = useState<Tab>('overview')
 
-  if (!currentOrg) return null
-
-  const fundraisingEnabled = hasFeature('fundraising')
+  const fundraisingEnabled = subscription != null && Object.keys(subscription).length > 0 && hasFeature('fundraising')
 
   return (
     <>
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold">{currentOrg.name}</h1>
-        <StatusBadge status={currentOrg.status} />
+        <h1 className="text-2xl font-bold">{org.name}</h1>
+        <StatusBadge status={org.status} />
+        {!isActive && org.status === 'active' && (
+          <button onClick={() => void onActivate()}
+            className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100">
+            Make active
+          </button>
+        )}
       </div>
-      {currentOrg.status !== 'active' && (
+      {org.status !== 'active' && (
         <p className="text-sm text-gray-500">
-          This organization is {currentOrg.status}. Most actions are unavailable until it becomes active.
+          This organization is {org.status}. Most actions are unavailable until it becomes active.
         </p>
       )}
       <div className="flex gap-4 border-b mb-4 overflow-x-auto">
@@ -172,7 +206,7 @@ function OrgDetail({ orgId }: { orgId: string }) {
           className={`pb-2 whitespace-nowrap ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''} ${!fundraisingEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
           Members
         </button>
-        {isOrgAdmin() && (
+        {isOrgAdmin && (
           <button onClick={() => setTab('invites')} disabled={!fundraisingEnabled}
             className={`pb-2 whitespace-nowrap ${tab === 'invites' ? 'border-b-2 border-blue-600 font-medium' : ''} ${!fundraisingEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
             Invitations
@@ -183,11 +217,11 @@ function OrgDetail({ orgId }: { orgId: string }) {
           Billing
         </button>
       </div>
-      {tab === 'overview' && <OverviewTab orgId={orgId} />}
-      {tab === 'campaigns' && fundraisingEnabled && <CampaignsTab orgId={orgId} />}
-      {tab === 'members' && fundraisingEnabled && <MembersTab orgId={orgId} />}
-      {tab === 'invites' && isOrgAdmin() && fundraisingEnabled && <InvitesTab orgId={orgId} />}
-      {tab === 'billing' && <BillingReadonly orgId={orgId} />}
+      {tab === 'overview' && <OverviewTab orgId={org.id} />}
+      {tab === 'campaigns' && fundraisingEnabled && <CampaignsTab orgId={org.id} />}
+      {tab === 'members' && fundraisingEnabled && <MembersTab orgId={org.id} isAdmin={isOrgAdmin} />}
+      {tab === 'invites' && isOrgAdmin && fundraisingEnabled && <InvitesTab orgId={org.id} />}
+      {tab === 'billing' && <BillingReadonly orgId={org.id} />}
       {!fundraisingEnabled && tab !== 'overview' && tab !== 'billing' && null}
       {subscription && !hasFeature('fundraising') && tab !== 'billing' && tab !== 'overview' && (
         <p className="text-sm text-gray-400">Current plan does not include this feature.</p>
@@ -233,8 +267,7 @@ const GRANTABLE_PERMISSIONS = [
   'fundraising.delete',
 ]
 
-function MembersTab({ orgId }: { orgId: string }) {
-  const { isOrgAdmin } = usePermissions()
+function MembersTab({ orgId, isAdmin }: { orgId: string; isAdmin: boolean }) {
   const [members, setMembers] = useState<MemberRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -282,7 +315,7 @@ function MembersTab({ orgId }: { orgId: string }) {
                 <p className="font-medium">{m.display_name ?? m.email}</p>
                 <p className="text-sm text-gray-500">{m.email}</p>
               </div>
-              {isOrgAdmin() ? (
+              {isAdmin ? (
                 <select value={m.role}
                   onChange={(e) => handleRoleChange(m.user_id, e.target.value)}
                   className="border rounded px-2 py-1 text-sm">
@@ -292,12 +325,12 @@ function MembersTab({ orgId }: { orgId: string }) {
               ) : (
                 <span className="text-sm text-gray-500">{m.role}</span>
               )}
-              {isOrgAdmin() && m.role !== 'admin' && (
+              {isAdmin && m.role !== 'admin' && (
                 <button onClick={() => handleRemove(m.user_id)}
                   className="text-red-600 hover:text-red-800 text-sm">Remove</button>
               )}
             </div>
-            {isOrgAdmin() && m.role === 'member' && (
+            {isAdmin && m.role === 'member' && (
               <div className="mt-3 flex flex-wrap gap-3 pl-4 border-t pt-3">
                 {GRANTABLE_PERMISSIONS.map((perm) => (
                   <label key={perm} className="inline-flex items-center gap-1.5 text-sm">
