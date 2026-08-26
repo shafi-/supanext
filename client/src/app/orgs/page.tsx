@@ -201,13 +201,13 @@ function OrgDetail({
             Campaigns
           </button>
         )}
-        <button onClick={() => setTab('members')} disabled={!fundraisingEnabled}
-          className={`pb-2 whitespace-nowrap ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''} ${!fundraisingEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+        <button onClick={() => setTab('members')}
+          className={`pb-2 whitespace-nowrap ${tab === 'members' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>
           Members
         </button>
         {isOrgAdmin && (
-          <button onClick={() => setTab('invites')} disabled={!fundraisingEnabled}
-            className={`pb-2 whitespace-nowrap ${tab === 'invites' ? 'border-b-2 border-blue-600 font-medium' : ''} ${!fundraisingEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+          <button onClick={() => setTab('invites')}
+            className={`pb-2 whitespace-nowrap ${tab === 'invites' ? 'border-b-2 border-blue-600 font-medium' : ''}`}>
             Invitations
           </button>
         )}
@@ -218,13 +218,9 @@ function OrgDetail({
       </div>
       {tab === 'overview' && <OverviewTab orgId={org.id} />}
       {tab === 'campaigns' && fundraisingEnabled && <CampaignsTab orgId={org.id} />}
-      {tab === 'members' && fundraisingEnabled && <MembersTab orgId={org.id} isAdmin={isOrgAdmin} />}
-      {tab === 'invites' && isOrgAdmin && fundraisingEnabled && <InvitesTab orgId={org.id} />}
+      {tab === 'members' && <MembersTab orgId={org.id} isAdmin={isOrgAdmin} />}
+      {tab === 'invites' && isOrgAdmin && <InvitesTab orgId={org.id} />}
       {tab === 'billing' && <BillingReadonly orgId={org.id} />}
-      {!fundraisingEnabled && tab !== 'overview' && tab !== 'billing' && null}
-      {subscription && !hasFeature('fundraising') && tab !== 'billing' && tab !== 'overview' && (
-        <p className="text-sm text-gray-400">Current plan does not include this feature.</p>
-      )}
     </>
   )
 }
