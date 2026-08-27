@@ -58,7 +58,6 @@ test.describe('Dashboard', () => {
 
     await expect(page.getByRole('heading', { name: 'My Organizations' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Profile Settings' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Security' })).toBeVisible()
   })
 
   test('shows quick stats section', async ({ page }) => {

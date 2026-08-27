@@ -6,6 +6,7 @@ const API_URL = 'http://localhost:54321'
 async function setupOrg(): Promise<string> {
   const email = `puborg-${crypto.randomUUID()}@example.com`
   const password = 'PubOrgPass123!'
+  const slug = `puborg-${crypto.randomUUID().slice(0, 8)}`
 
   // Register user
   const signupRes = await fetch(`${API_URL}/auth/v1/signup`, {
@@ -17,22 +18,24 @@ async function setupOrg(): Promise<string> {
   const accessToken = signupData.access_token
   if (!accessToken) throw new Error(`Signup failed: ${JSON.stringify(signupData)}`)
 
-  // Wait for trigger to create org
-  await new Promise((r) => setTimeout(r, 500))
-
-  // Get org slug using user's access token
-  const orgRes = await fetch(`${API_URL}/rest/v1/rpc/get_my_organizations`, {
+  // Signup does NOT auto-create an org — create one explicitly via the API.
+  // The app's RPCs live in the `api` schema; PostgREST needs Content-Profile
+  // to look there (otherwise it defaults to `public` and 404s).
+  const orgRes = await fetch(`${API_URL}/rest/v1/rpc/request_organization`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Content-Profile': 'api',
+      'Accept-Profile': 'api',
       Authorization: `Bearer ${accessToken}`,
       apikey: ANON_KEY,
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ p_name: 'Public Org Test', p_slug: slug }),
   })
-  const orgs = await orgRes.json()
-  if (!orgs || orgs.length === 0) throw new Error(`No orgs found for ${email}`)
-  return orgs[0].slug
+  if (!orgRes.ok) {
+    throw new Error(`request_organization failed (${orgRes.status}): ${await orgRes.text()}`)
+  }
+  return slug
 }
 
 test.describe.serial('Public Org Page', () => {

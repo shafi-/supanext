@@ -32,6 +32,8 @@ async function createSystemAdmin(page: import('@playwright/test').Page) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Content-Profile': 'api',
+        'Accept-Profile': 'api',
         'Authorization': `Bearer ${SERVICE_KEY}`,
         'apikey': SERVICE_KEY,
       },

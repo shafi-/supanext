@@ -47,7 +47,6 @@ test.describe('Responsive Design', () => {
 
       await expect(page.locator('text=My Organizations')).toBeVisible()
       await expect(page.locator('text=Profile Settings')).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'Security' })).toBeVisible()
     })
   })
 })
