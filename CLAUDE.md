@@ -12,9 +12,7 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 - **Static Export**: Frontend uses `output: 'export'` - no server components, everything must be client-side
 - **No Dynamic Routes**: Static export cannot use `[param]` path segments. Use query params instead: `/orgs?id=xxx` not `/orgs/xxx`
 - **Query Param Validation**: Use `useRequiredParam(key)` hook + `isUuid()` / `isInviteToken()` validators for safe param extraction
-- **Layered Structure**: Pages → Services → Repositories → Supabase Client Manager
-- **Container Pattern**: Containers manage state, communicate with services, and compose UI from components
-- **Component Contract**: Components are stateless and never make API calls directly
+- **Frontend layering is enforced (Page → Container → Component).** The full contract, directory layout, and the `AppLayout`/`Nav` session exception are maintained in `AGENTS.md` — read it before touching the frontend. Do not duplicate or diverge from that spec here.
 
 ### Backend Architecture
 - **Supabase**: Database and authentication backend
