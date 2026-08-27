@@ -26,6 +26,7 @@ export const Rpc = {
     Unsuspend: 'unsuspend_organization' satisfies DbFunction,
     GetStatus: 'get_organization_status' satisfies DbFunction,
     ListPublic: 'list_public_organizations' satisfies DbFunction,
+    GetPublic: 'get_org_public' satisfies DbFunction,
     GetStats: 'get_org_stats' satisfies DbFunction,
   },
   Member: {

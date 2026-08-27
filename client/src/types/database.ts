@@ -69,6 +69,7 @@ export type Database = {
       get_invitation_preview: { Args: { p_token: string }; Returns: Json }
       get_my_organizations: { Args: never; Returns: Json }
       get_org_stats: { Args: { p_org_id?: string }; Returns: Json }
+      get_org_public: { Args: { p_org_id?: string }; Returns: Json }
       get_organization_members: { Args: { p_org_id?: string }; Returns: Json }
       get_organization_status: { Args: { p_org_id?: string }; Returns: Json }
       get_session_context: { Args: never; Returns: Json }

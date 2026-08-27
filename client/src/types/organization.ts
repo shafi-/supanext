@@ -40,3 +40,11 @@ export interface OrgStats {
   member_count: number
   campaign_count: number
 }
+
+export interface PublicOrgProfile {
+  id: string
+  name: string
+  slug: string
+  status: 'pending' | 'active'
+  created_at: string
+}

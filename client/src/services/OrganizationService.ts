@@ -16,6 +16,7 @@ import type {
   SessionContext,
   OrganizationStatus,
   PublicOrganization,
+  PublicOrgProfile,
   OrgStats,
 } from '@/types/organization'
 
@@ -48,6 +49,11 @@ export class OrganizationService extends BaseRepository {
   /** Anonymous-safe public directory (active + suspended orgs). */
   async listPublicOrganizations(limit = 50): ServiceData<PublicOrganization[]> {
     return this.callRpc<PublicOrganization[]>(Rpc.Org.ListPublic, { p_limit: limit })
+  }
+
+  /** Anonymous public org profile by id (uuid) or slug. */
+  async getOrgPublic(identifier: string): ServiceData<PublicOrgProfile | null> {
+    return this.callRpc<PublicOrgProfile | null>(Rpc.Org.GetPublic, { p_org_id: identifier })
   }
 }
 
