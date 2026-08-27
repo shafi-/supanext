@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 interface ProfileComponentProps {
   email?: string
@@ -35,8 +37,9 @@ export function ProfileComponent({
           <p className="mt-1 text-gray-900">{email}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Display Name</label>
-          <input
+          <label className="block text-sm font-medium text-gray-700" htmlFor="display-name">Display Name</label>
+          <Input
+            id="display-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -45,8 +48,9 @@ export function ProfileComponent({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Avatar URL</label>
-          <input
+          <label className="block text-sm font-medium text-gray-700" htmlFor="avatar-url">Avatar URL</label>
+          <Input
+            id="avatar-url"
             type="url"
             placeholder="https://…"
             value={avatarUrl}
@@ -58,7 +62,7 @@ export function ProfileComponent({
           <label className="block text-sm font-medium text-gray-700">Active Organization</label>
           <p className="mt-1 text-gray-900">{orgName ?? 'None'}</p>
         </div>
-        <button
+        <Button
           onClick={async () => {
             const ok = await onSave(name, avatarUrl.trim() || undefined)
             if (ok) {
@@ -70,7 +74,7 @@ export function ProfileComponent({
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
-        </button>
+        </Button>
       </div>
     </div>
   )

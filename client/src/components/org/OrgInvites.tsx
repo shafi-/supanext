@@ -1,39 +1,32 @@
-import { useState } from 'react'
-import { inviteService, type InvitationPayload } from '@/services/InviteService'
+import { type InvitationPayload } from '@/services/InviteService'
 
-interface InvitesTabProps {
-  orgId: string
+interface OrgInvitesProps {
+  email: string
+  role: 'admin' | 'member'
+  lastInvite: (InvitationPayload & { email: string }) | null
+  error: string | null
+  sending: boolean
+  onChangeEmail: (value: string) => void
+  onChangeRole: (role: 'admin' | 'member') => void
+  onInvite: (e: React.FormEvent) => void
 }
 
-export function InvitesTab({ orgId }: InvitesTabProps) {
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'admin' | 'member'>('member')
-  const [lastInvite, setLastInvite] = useState<(InvitationPayload & { email: string }) | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [sending, setSending] = useState(false)
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const val = email.trim()
-    if (!val) return
-    setSending(true)
-    setError(null)
-    const { data, error: err } = await inviteService.inviteMember(val, role, orgId)
-    setSending(false)
-    if (err || !data) {
-      setError(err ?? 'Failed to create invitation')
-      return
-    }
-    setLastInvite({ ...data, email: val })
-    setEmail('')
-  }
-
+export function OrgInvites({
+  email,
+  role,
+  lastInvite,
+  error,
+  sending,
+  onChangeEmail,
+  onChangeRole,
+  onInvite,
+}: OrgInvitesProps) {
   return (
     <div className="space-y-4 max-w-2xl">
-      <form onSubmit={handleInvite} className="flex gap-2">
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+      <form onSubmit={onInvite} className="flex gap-2">
+        <input type="email" value={email} onChange={(e) => onChangeEmail(e.target.value)}
           placeholder="Invite by email…" className="flex-1 border rounded-md px-3 py-2" />
-        <select value={role} onChange={(e) => setRole(e.target.value as 'admin' | 'member')}
+        <select value={role} onChange={(e) => onChangeRole(e.target.value as 'admin' | 'member')}
           className="border rounded px-2 py-2">
           <option value="member">Member</option>
           <option value="admin">Admin</option>

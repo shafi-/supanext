@@ -1,11 +1,13 @@
+'use client'
+
 import { useSubscription } from '@/hooks/useSubscription'
 import { BillingTab } from '@/components/subscription/BillingTab'
 
-interface BillingReadonlyProps {
+interface BillingTabContainerProps {
   orgId: string
 }
 
-export function BillingReadonly({ orgId }: BillingReadonlyProps) {
+export function BillingTabContainer({ orgId }: BillingTabContainerProps) {
   const { subscription, loading, error } = useSubscription(orgId)
   return <BillingTab subscription={subscription} loading={loading} error={error} />
 }

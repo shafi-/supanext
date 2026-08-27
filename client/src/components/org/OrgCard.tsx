@@ -1,5 +1,5 @@
-import { SessionOrganization } from '@/services/OrganizationService'
-import { StatusBadge } from './StatusBadge'
+import type { SessionOrganization } from '@/services/OrganizationService'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 
 interface OrgCardProps {
   org: SessionOrganization

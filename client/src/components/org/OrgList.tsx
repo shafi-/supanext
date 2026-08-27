@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { SessionOrganization } from '@/services/OrganizationService'
+import type { SessionOrganization } from '@/services/OrganizationService'
 import { OrgCard } from './OrgCard'
 
 interface OrgListProps {

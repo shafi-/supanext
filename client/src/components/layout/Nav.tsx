@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
-import { useOrganization } from '@/hooks/useOrganization'
-import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useState } from 'react'
 
-export function Nav() {
-  const { user, signOut } = useAuth()
-  const { currentOrg } = useOrganization()
-  const { isSystemAdmin } = useSystemAdmin()
+interface NavProps {
+  user: { email: string } | null
+  currentOrg: { id: string } | null
+  isSystemAdmin: boolean
+  onSignOut: () => void
+}
+
+export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const router = useRouter()
 
@@ -39,7 +40,7 @@ export function Nav() {
             {user ? (
               <>
                 <Link href="/profile" className="text-gray-600 hover:text-gray-900">{user.email}</Link>
-                <button onClick={() => signOut().then(() => router.push('/auth/login/'))} className="text-gray-600 hover:text-gray-900">Sign out</button>
+                <button onClick={() => { onSignOut(); router.push('/auth/login/') }} className="text-gray-600 hover:text-gray-900">Sign out</button>
               </>
             ) : (
               <Link href="/auth/login" className="text-gray-600 hover:text-gray-900">Sign in</Link>

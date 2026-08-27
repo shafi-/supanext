@@ -1,20 +1,18 @@
+'use client'
+
 import { useState, useEffect } from 'react'
 import { useRequireAuth } from '@/hooks/useAuth'
 import { useOrganization } from '@/hooks/useOrganization'
-import { useSubscription } from '@/hooks/useSubscription'
 import { useRequiredParam, isUuid } from '@/hooks/useQueryParam'
 import { organizationService } from '@/services/OrganizationService'
-import { OrgList } from './components/OrgList'
-import { OrgDetail } from './components/OrgDetail'
-import { CreateOrgForm } from './components/CreateOrgForm'
-
-type Tab = 'overview' | 'campaigns' | 'members' | 'invites' | 'billing'
+import { OrgList } from '@/components/org/OrgList'
+import { CreateOrgForm } from '@/components/org/CreateOrgForm'
+import { OrgDetailsContainer } from './OrgDetailsContainer'
 
 export function OrgsContainer() {
   useRequireAuth()
   const orgId = useRequiredParam('id')
-  const { currentOrg, organizations, loading: orgLoading, switchOrg, refresh } =
-    useOrganization()
+  const { organizations, loading: orgLoading, refresh } = useOrganization()
   const [error, setError] = useState<string | null>(null)
   const [orgListState, setOrgListState] = useState({
     name: '',
@@ -22,9 +20,6 @@ export function OrgsContainer() {
     creating: false,
     error: null as string | null,
   })
-  const [tab, setTab] = useState<Tab>('overview')
-
-  const { subscription, hasFeature } = useSubscription(organizations[0]?.id ?? '')
 
   useEffect(() => {
     if (!orgId) return
@@ -72,22 +67,5 @@ export function OrgsContainer() {
   if (!selectedOrg && !orgLoading) return <p className="text-gray-500">You are not a member of this organization.</p>
   if (!selectedOrg) return null
 
-  const isAdmin = selectedOrg.role === 'admin'
-  const isActive = currentOrg?.id === selectedOrg.id
-  const fundraisingEnabled = subscription != null && Object.keys(subscription).length > 0 && hasFeature('fundraising')
-
-  return (
-    <OrgDetail
-      org={selectedOrg!}
-      isActive={isActive}
-      isAdmin={isAdmin}
-      hasFundraising={fundraisingEnabled}
-      tab={tab}
-      onTabChange={setTab}
-      onActivate={async () => {
-        await switchOrg(selectedOrg!.id)
-        await refresh()
-      }}
-    />
-  )
+  return <OrgDetailsContainer org={selectedOrg} />
 }

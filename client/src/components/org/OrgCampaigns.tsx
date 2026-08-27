@@ -1,54 +1,37 @@
-import { useState, useEffect, useCallback } from 'react'
-import { campaignService, type Campaign } from '@/services/CampaignService'
+import { useState } from 'react'
+import type { Campaign } from '@/services/CampaignService'
 
-interface CampaignsTabProps {
-  orgId: string
+interface CampaignForm {
+  name: string
+  description: string
+  goal: string
 }
 
-export function CampaignsTab({ orgId }: CampaignsTabProps) {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface OrgCampaignsProps {
+  campaigns: Campaign[]
+  loading: boolean
+  error: string | null
+  saving: boolean
+  onCreate: (input: CampaignForm) => void
+  onDelete: (id: string) => void
+}
+
+export function OrgCampaigns({
+  campaigns,
+  loading,
+  error,
+  saving,
+  onCreate,
+  onDelete,
+}: OrgCampaignsProps) {
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', goal: '' })
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<CampaignForm>({ name: '', description: '', goal: '' })
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const { data, error: err } = await campaignService.listCampaigns(orgId)
-    if (data) setCampaigns(data)
-    if (err) setError(err)
-    setLoading(false)
-  }, [orgId])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name.trim()) return
-    setSaving(true)
-    const { error: err } = await campaignService.createCampaign({
-      name: form.name.trim(),
-      description: form.description.trim() || undefined,
-      goalMinor: form.goal ? parseInt(form.goal) : undefined,
-      orgId,
-    })
-    setSaving(false)
-    if (err) {
-      setError(err)
-      return
-    }
+    onCreate(form)
     setForm({ name: '', description: '', goal: '' })
     setShowForm(false)
-    await load()
-  }
-
-  const handleDelete = async (id: string) => {
-    const { error: err } = await campaignService.deleteCampaign(id)
-    if (err) setError(err)
-    await load()
   }
 
   return (
@@ -60,7 +43,7 @@ export function CampaignsTab({ orgId }: CampaignsTabProps) {
       </button>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white p-4 rounded-lg shadow space-y-3">
+        <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg shadow space-y-3">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Campaign name" className="w-full border rounded-md px-3 py-2 text-sm" />
           <textarea value={form.description}
@@ -93,7 +76,7 @@ export function CampaignsTab({ orgId }: CampaignsTabProps) {
                   <p className="text-xs text-gray-400">Goal: {(c.goal_minor / 100).toFixed(2)}</p>
                 )}
               </div>
-              <button onClick={() => void handleDelete(c.id)}
+              <button onClick={() => void onDelete(c.id)}
                 className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">
                 Delete
               </button>

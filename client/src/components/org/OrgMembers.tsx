@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { memberService } from '@/services/MemberService'
 import { Permission } from '@/types/permissions'
 
-interface MemberRow {
+export interface MemberRow {
   user_id: string
   email: string
   display_name: string | null
@@ -10,53 +8,27 @@ interface MemberRow {
   permissions: string[]
 }
 
-const GRANTABLE_PERMISSIONS = [
-  Permission.FundraisingView,
-  Permission.FundraisingCreate,
-  Permission.FundraisingUpdate,
-  Permission.FundraisingDelete,
-]
-
-interface MembersTabProps {
-  orgId: string
+interface OrgMembersProps {
+  members: MemberRow[]
+  loading: boolean
+  error: string | null
   isAdmin: boolean
+  grantablePermissions: Permission[]
+  onRoleChange: (userId: string, role: string) => void
+  onRemove: (userId: string) => void
+  onPermission: (userId: string, permission: string, granted: boolean) => void
 }
 
-export function MembersTab({ orgId, isAdmin }: MembersTabProps) {
-  const [members, setMembers] = useState<MemberRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    const { data, error: err } = await memberService.getMembers(orgId)
-    if (data) setMembers(data)
-    if (err) setError(err)
-    setLoading(false)
-  }, [orgId])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  const handleRoleChange = async (userId: string, role: string) => {
-    const { error: err } = await memberService.changeMemberRole(userId, role as 'admin' | 'member', orgId)
-    if (err) setError(err)
-    await load()
-  }
-
-  const handleRemove = async (userId: string) => {
-    const { error: err } = await memberService.removeMember(userId, orgId)
-    if (err) setError(err)
-    await load()
-  }
-
-  const handlePermission = async (userId: string, permission: string, granted: boolean) => {
-    const { error: err } = await memberService.setMemberPermission(userId, permission, granted, orgId)
-    if (err) setError(err)
-    await load()
-  }
-
+export function OrgMembers({
+  members,
+  loading,
+  error,
+  isAdmin,
+  grantablePermissions,
+  onRoleChange,
+  onRemove,
+  onPermission,
+}: OrgMembersProps) {
   if (loading) return <div>Loading...</div>
 
   return (
@@ -72,7 +44,7 @@ export function MembersTab({ orgId, isAdmin }: MembersTabProps) {
               </div>
               {isAdmin ? (
                 <select value={m.role}
-                  onChange={(e) => handleRoleChange(m.user_id, e.target.value)}
+                  onChange={(e) => onRoleChange(m.user_id, e.target.value)}
                   className="border rounded px-2 py-1 text-sm">
                   <option value="admin">Admin</option>
                   <option value="member">Member</option>
@@ -81,17 +53,17 @@ export function MembersTab({ orgId, isAdmin }: MembersTabProps) {
                 <span className="text-sm text-gray-500">{m.role}</span>
               )}
               {isAdmin && m.role !== 'admin' && (
-                <button onClick={() => handleRemove(m.user_id)}
+                <button onClick={() => onRemove(m.user_id)}
                   className="text-red-600 hover:text-red-800 text-sm">Remove</button>
               )}
             </div>
             {isAdmin && m.role === 'member' && (
               <div className="mt-3 flex flex-wrap gap-3 pl-4 border-t pt-3">
-                {GRANTABLE_PERMISSIONS.map((perm) => (
+                {grantablePermissions.map((perm) => (
                   <label key={perm} className="inline-flex items-center gap-1.5 text-sm">
                     <input type="checkbox"
                       checked={m.permissions.includes(perm)}
-                      onChange={(e) => handlePermission(m.user_id, perm, e.target.checked)} />
+                      onChange={(e) => onPermission(m.user_id, perm, e.target.checked)} />
                     {perm.replace('fundraising.', '')}
                   </label>
                 ))}
