@@ -247,6 +247,11 @@ describe('contract: service → RPC arg mapping', () => {
       await organizationService.getOrgStats(ORG)
       rpcWasCalledWith('get_org_stats', { p_org_id: ORG })
     })
+
+    it('getOrgPublic', async () => {
+      await organizationService.getOrgPublic('acme')
+      rpcWasCalledWith('get_org_public', { p_org_id: 'acme' })
+    })
   })
 
   describe('ProfileService', () => {
