@@ -1,15 +1,21 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { PaginatedResponse, PaginationCursor, PaginationParams } from '@/types/pagination'
+import type { PaginationCursor, PaginationParams } from '@/types/pagination'
 
 interface UsePaginatedListOptions<T> {
-  /** Service method that returns PaginatedResponse<T> */
-  fetcher: (params: PaginationParams) => Promise<{ data: PaginatedResponse<T> | null; error: string | null }>
+  /** Service method that returns a flat array of items */
+  fetcher: (params: PaginationParams) => Promise<{ data: T[] | null; error: string | null }>
   /** Items per page (default: 20) */
   limit?: number
   /** Set to false to prevent auto-load on mount (default: true) */
   enabled?: boolean
+  /**
+   * Field name on each item used as the cursor for the next request.
+   * Must match what the SQL `p_cursor` filter expects.
+   * Default: 'id'
+   */
+  cursorField?: keyof T
 }
 
 interface UsePaginatedListReturn<T> {
@@ -27,6 +33,7 @@ export function usePaginatedList<T>({
   fetcher,
   limit = 20,
   enabled = true,
+  cursorField = 'id' as keyof T,
 }: UsePaginatedListOptions<T>): UsePaginatedListReturn<T> {
   const [items, setItems] = useState<T[]>([])
   const [cursor, setCursor] = useState<PaginationCursor>(null)
@@ -46,15 +53,14 @@ export function usePaginatedList<T>({
       const data = result.data
       if (!data) return
 
-      setItems(prev => (append ? [...prev, ...data.items] : data.items))
-      setCursor(data.next_cursor)
-      setHasMore(data.next_cursor !== null)
+      setItems(prev => (append ? [...prev, ...data] : data))
+      setHasMore(data.length === limit)
+      setCursor(data.length > 0 ? (data[data.length - 1][cursorField] as unknown as PaginationCursor) : null)
       setError(null)
     },
-    [fetcher, limit]
+    [fetcher, limit, cursorField]
   )
 
-  // Initial load
   useEffect(() => {
     if (!enabled) return
     if (mountedRef.current) return
@@ -62,7 +68,6 @@ export function usePaginatedList<T>({
     void fetchPage(null, false).finally(() => setLoading(false))
   }, [enabled, fetchPage])
 
-  // Load more (next page)
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return
     setLoadingMore(true)
@@ -70,7 +75,6 @@ export function usePaginatedList<T>({
     setLoadingMore(false)
   }, [loadingMore, hasMore, cursor, fetchPage])
 
-  // Reset to first page
   const reset = useCallback(() => {
     setItems([])
     setCursor(null)
@@ -78,7 +82,6 @@ export function usePaginatedList<T>({
     setError(null)
   }, [])
 
-  // Refresh current data (reset + reload)
   const refresh = useCallback(async () => {
     reset()
     setLoading(true)

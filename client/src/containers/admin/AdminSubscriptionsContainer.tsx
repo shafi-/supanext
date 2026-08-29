@@ -22,8 +22,8 @@ export default function AdminSubscriptionsContainer() {
       adminService.listAllOrganizations({ limit: 1000 }),
       adminService.listPlans({ limit: 1000 }),
     ])
-    if (orgData) setOrgs(orgData.items)
-    if (planData) setPlans(planData.items)
+    if (orgData) setOrgs(orgData)
+    if (planData) setPlans(planData)
     setLoading(false)
   }, [])
 

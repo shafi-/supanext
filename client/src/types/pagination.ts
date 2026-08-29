@@ -1,19 +1,16 @@
 import type { ReactNode } from 'react'
 
-/** Cursor type — matches the UUID/string returned by the API */
+/** Cursor type — matches the string used for pagination */
 export type PaginationCursor = string | null
-
-/** Standard shape returned by every paginated RPC */
-export interface PaginatedResponse<T> {
-  items: T[]
-  next_cursor: PaginationCursor
-}
 
 /** Params sent to paginated RPCs */
 export interface PaginationParams {
   limit?: number
   cursor?: PaginationCursor
 }
+
+/** Flat array returned by all paginated RPCs */
+export type PaginatedResult<T> = T[]
 
 /** Props for components that render paginated lists */
 export interface PaginatedListProps<T> {

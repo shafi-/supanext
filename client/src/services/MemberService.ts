@@ -1,9 +1,9 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
-import type { PaginatedResponse, PaginationParams } from '@/types/pagination'
+import type { PaginationParams } from '@/types/pagination'
 import { Rpc } from '@/types/rpc'
 
-type MemberRow = {
+export type MemberRow = {
   user_id: string
   email: string
   display_name: string | null
@@ -12,8 +12,8 @@ type MemberRow = {
 }
 
 export class MemberService extends BaseRepository {
-  async getMembers(orgId?: string, params?: PaginationParams): ServiceData<PaginatedResponse<MemberRow>> {
-    return this.callRpc<PaginatedResponse<MemberRow>>(Rpc.Member.GetMany, {
+  async getMembers(orgId?: string, params?: PaginationParams): ServiceData<MemberRow[]> {
+    return this.callRpc<MemberRow[]>(Rpc.Member.GetMany, {
       p_org_id: orgId,
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,

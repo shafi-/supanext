@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { memberService } from '@/services/MemberService'
+import { memberService, type MemberRow } from '@/services/MemberService'
 import { Permission } from '@/types/permissions'
 import { OrgMembers } from '@/components/org/OrgMembers'
 import { usePaginatedList } from '@/hooks/usePaginatedList'
@@ -27,8 +27,9 @@ export function MembersTabContainer({ orgId, isAdmin }: MembersTabContainerProps
     hasMore,
     loadMore,
     refresh,
-  } = usePaginatedList({
+  } = usePaginatedList<MemberRow>({
     fetcher: useCallback((params) => memberService.getMembers(orgId, params), [orgId]),
+    cursorField: 'user_id',
   })
 
   const handleRoleChange = async (userId: string, role: string) => {
