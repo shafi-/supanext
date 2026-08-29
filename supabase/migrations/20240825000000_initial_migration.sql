@@ -48,6 +48,42 @@ as $$
   select encode(security.digest(p_token, 'sha256'), 'hex');
 $$;
 
+-- ULID: 26 chars Crockford Base32. First 10 = timestamp (48-bit ms-since-epoch),
+-- next 16 = randomness. Time-sortable — sorting by id desc gives newest first.
+-- Filter and order by id are now consistent — fixes broken pagination.
+create or replace function security.generate_ulid()
+returns text
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  t_ms bigint := (extract(epoch from clock_timestamp()) * 1000)::bigint;
+  rand_bytes bytea := gen_random_bytes(10);
+  t_chars text := '';
+  r_chars text := '';
+  alphabet text := '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+begin
+  -- Encode timestamp as 10 Crockford base32 chars (LSB first, reversed to MSB first)
+  for i in 1..10 loop
+    t_chars := substr(alphabet, (t_ms % 32)::int + 1, 1) || t_chars;
+    t_ms := t_ms / 32;
+  end loop;
+
+  -- Encode 10 random bytes as 16 base32 chars (5 bits per char, 80 bits / 5 = 16)
+  for i in 0..15 loop
+    if i % 2 = 0 then
+      r_chars := r_chars || substr(alphabet, (get_byte(rand_bytes, i / 2) >> 4) + 1, 1);
+    else
+      r_chars := r_chars || substr(alphabet, (get_byte(rand_bytes, i / 2) & 15) + 1, 1);
+    end if;
+  end loop;
+
+  return t_chars || r_chars;
+end;
+$$;
+
 revoke all on schema app from public, anon, authenticated;
 revoke all on schema security from public, anon, authenticated;
 revoke all on schema api from public;
@@ -179,7 +215,7 @@ create table if not exists app.system_admins (
 -- Permissions / features
 -- -----------------------------------------------------------------------------
 create table if not exists app.features (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   code text not null unique,
   name text not null,
   description text,
@@ -187,12 +223,12 @@ create table if not exists app.features (
 );
 
 create table if not exists app.permissions (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   code text not null unique,
   name text not null,
   description text,
   scope app.permission_scope not null default 'organization',
-  feature_id uuid references app.features(id) on delete set null,
+  feature_id text references app.features(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -201,7 +237,7 @@ create index if not exists permissions_feature_idx on app.permissions(feature_id
 create table if not exists app.organization_member_permissions (
   organization_id uuid not null,
   user_id uuid not null,
-  permission_id uuid not null references app.permissions(id) on delete cascade,
+  permission_id text not null references app.permissions(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (organization_id, user_id, permission_id),
   foreign key (organization_id, user_id)
@@ -245,7 +281,7 @@ create unique index if not exists invitations_one_pending_email_org_idx
 -- Subscription plans / entitlements
 -- -----------------------------------------------------------------------------
 create table if not exists app.subscription_plans (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   code text not null unique,
   name text not null,
   description text,
@@ -259,16 +295,16 @@ create table if not exists app.subscription_plans (
 );
 
 create table if not exists app.plan_features (
-  plan_id uuid not null references app.subscription_plans(id) on delete cascade,
-  feature_id uuid not null references app.features(id) on delete cascade,
+  plan_id text not null references app.subscription_plans(id) on delete cascade,
+  feature_id text not null references app.features(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (plan_id, feature_id)
 );
 
 create table if not exists app.organization_subscriptions (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   organization_id uuid not null references app.organizations(id) on delete cascade,
-  plan_id uuid not null references app.subscription_plans(id),
+  plan_id text not null references app.subscription_plans(id),
   status app.subscription_status not null default 'active',
   starts_at timestamptz not null default now(),
   ends_at timestamptz,
@@ -1259,12 +1295,12 @@ create or replace function api.create_plan(
   p_currency text,
   p_billing_interval text
 )
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_id uuid;
+declare v_id text;
 begin
   if not security.can_perform('system.plans.manage') then
     raise exception using errcode = '42501', message = 'Not authorized';
@@ -1276,13 +1312,13 @@ begin
 end;
 $$;
 
-create or replace function api.set_plan_feature(p_plan_id uuid, p_feature_code text, p_enabled boolean)
+create or replace function api.set_plan_feature(p_plan_id text, p_feature_code text, p_enabled boolean)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_feature_id uuid;
+declare v_feature_id text;
 begin
   if not security.can_perform('system.plans.manage') then
     raise exception using errcode = '42501', message = 'Not authorized';

@@ -63,6 +63,12 @@ drop index if exists profiles_active_org_idx;
 -- Add user_id to campaigns, drop organization_id
 alter table app.fundraising_campaigns drop column if exists organization_id;
 alter table app.fundraising_campaigns add column if not exists user_id uuid not null references auth.users(id) on delete cascade;
+-- Switch campaign id to ULID for time-sortable pagination
+alter table app.fundraising_campaigns
+  alter column id type text using security.generate_ulid(),
+  alter column id set default security.generate_ulid();
+alter table app.fundraising_campaigns
+  alter column created_by type text using created_by::text;
 create index if not exists fundraising_campaigns_user_idx on app.fundraising_campaigns(user_id, created_at desc);
 
 -- Update existing campaigns: assign to the first admin of the org they belonged to (if data exists)
@@ -72,9 +78,9 @@ create index if not exists fundraising_campaigns_user_idx on app.fundraising_cam
 -- New: user_subscriptions
 -- ---------------------------------------------------------------------------
 create table if not exists app.user_subscriptions (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  plan_id uuid not null references app.subscription_plans(id),
+  plan_id text not null references app.subscription_plans(id),
   status app.subscription_status not null default 'active',
   starts_at timestamptz not null default now(),
   ends_at timestamptz,
@@ -104,7 +110,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 create table if not exists app.platform_invitations (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   email text not null,
   token_hash text not null unique,
   invited_by uuid not null references auth.users(id),
@@ -259,17 +265,17 @@ $$;
 
 create or replace function api.assign_user_subscription(
   p_user_id uuid,
-  p_plan_id uuid,
+  p_plan_id text,
   p_status app.subscription_status default 'active',
   p_starts_at timestamptz default now(),
   p_ends_at timestamptz default null
 )
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_id uuid;
+declare v_id text;
 begin
   if not security.is_system_admin() then
     raise exception using errcode = '42501', message = 'Not authorized';
@@ -301,7 +307,7 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_id uuid;
+declare v_id text;
 begin
   if not security.is_system_admin() then
     raise exception using errcode = '42501', message = 'Not authorized';
@@ -327,7 +333,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create or replace function api.list_my_campaigns(
   p_limit int default 20,
-  p_cursor timestamptz default null
+  p_cursor text default null
 )
 returns jsonb
 language plpgsql
@@ -343,13 +349,13 @@ begin
     raise exception using errcode = '28000', message = 'Not authenticated';
   end if;
 
-  select coalesce(jsonb_agg(to_jsonb(c) order by c.created_at desc), '[]'::jsonb)
+  select coalesce(jsonb_agg(to_jsonb(c) order by c.id desc), '[]'::jsonb)
   into v_result
   from (
     select * from app.fundraising_campaigns fc
     where fc.user_id = v_user_id
-      and (p_cursor is null or fc.created_at < p_cursor)
-    order by fc.created_at desc
+      and (p_cursor is null or fc.id < p_cursor)
+    order by fc.id desc
     limit least(greatest(p_limit, 1), 100)
   ) c;
 
@@ -365,14 +371,14 @@ create or replace function api.create_campaign(
   p_starts_at timestamptz default null,
   p_ends_at timestamptz default null
 )
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
   v_user_id uuid := auth.uid();
-  v_id uuid;
+  v_id text;
 begin
   if v_user_id is null then
     raise exception using errcode = '28000', message = 'Not authenticated';
@@ -394,7 +400,7 @@ end;
 $$;
 
 create or replace function api.update_campaign(
-  p_campaign_id uuid,
+  p_campaign_id text,
   p_name text default null,
   p_description text default null,
   p_goal_minor bigint default null,
@@ -432,7 +438,7 @@ begin
 end;
 $$;
 
-create or replace function api.delete_campaign(p_campaign_id uuid)
+create or replace function api.delete_campaign(p_campaign_id text)
 returns void
 language plpgsql
 security definer
@@ -463,7 +469,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_invitation_id uuid;
+  v_invitation_id text;
   v_token text;
   v_hash text;
   v_email text := lower(trim(p_email));
@@ -536,7 +542,7 @@ begin
 end;
 $$;
 
-create or replace function api.revoke_platform_invitation(p_invitation_id uuid)
+create or replace function api.revoke_platform_invitation(p_invitation_id text)
 returns void
 language plpgsql
 security definer
@@ -593,9 +599,12 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- API: system admin - list users (replaces list_all_organizations)
+-- API: system admin - list users
 -- ---------------------------------------------------------------------------
-create or replace function api.list_all_users(p_limit int default 200, p_cursor uuid default null)
+-- Note: auth.users.id is UUID (managed by Supabase), not ULID. So we order/filter
+-- by created_at desc — this can have ties on users with same signup instant,
+-- which is rare in practice.
+create or replace function api.list_all_users(p_limit int default 200, p_cursor text default null)
 returns jsonb
 language plpgsql
 stable
@@ -609,16 +618,16 @@ begin
 
   return coalesce((
     select jsonb_agg(jsonb_build_object(
-      'id', u.id,
+      'id', u.id::text,
       'email', u.email,
       'display_name', pr.display_name,
       'created_at', u.created_at,
       'is_system_admin', exists(select 1 from app.system_admins sa where sa.user_id = u.id),
-      'has_subscription', security.has_user_subscription(u.id)
+      'has_subscription', security.has_user_subscription(u.id::text)
     ) order by u.created_at desc)
     from auth.users u
     left join app.profiles pr on pr.id = u.id
-    where (p_cursor is null or u.id > p_cursor)
+    where (p_cursor is null or u.created_at < p_cursor::timestamptz)
     order by u.created_at desc
     limit least(greatest(coalesce(p_limit, 200), 1), 500)
   ), '[]'::jsonb);
@@ -626,7 +635,9 @@ end;
 $$;
 
 -- List subscriptions (admin view)
-create or replace function api.list_all_subscriptions(p_limit int default 200, p_cursor uuid default null)
+-- Orders by subscription id (ULID, time-sortable) so cursor pagination is
+-- deterministic and consistent with the WHERE filter.
+create or replace function api.list_all_subscriptions(p_limit int default 200, p_cursor text default null)
 returns jsonb
 language plpgsql
 stable
@@ -641,7 +652,7 @@ begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', us.id,
-      'user_id', us.user_id,
+      'user_id', us.user_id::text,
       'email', u.email,
       'display_name', pr.display_name,
       'plan_id', sp.id,
@@ -650,19 +661,19 @@ begin
       'status', us.status,
       'starts_at', us.starts_at,
       'ends_at', us.ends_at
-    ) order by us.created_at desc)
+    ) order by us.id desc)
     from app.user_subscriptions us
     join auth.users u on u.id = us.user_id
     left join app.profiles pr on pr.id = us.user_id
     join app.subscription_plans sp on sp.id = us.plan_id
-    where (p_cursor is null or us.id > p_cursor)
-    order by us.created_at desc
+    where (p_cursor is null or us.id < p_cursor)
+    order by us.id desc
     limit least(greatest(coalesce(p_limit, 200), 1), 500)
   ), '[]'::jsonb);
 end;
 $$;
 
--- List plans (already exists, keep it)
+-- List plans
 create or replace function api.list_plans()
 returns jsonb
 language plpgsql
@@ -684,7 +695,7 @@ begin
         select jsonb_agg(f.code order by f.code)
         from app.plan_features pf join app.features f on f.id=pf.feature_id
         where pf.plan_id=sp.id),'[]'::jsonb)
-    ) order by sp.price_minor, sp.name)
+    ) order by sp.id desc)
     from app.subscription_plans sp
   ), '[]'::jsonb);
 end;
