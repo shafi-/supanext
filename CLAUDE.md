@@ -10,7 +10,7 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 
 ### Frontend Architecture
 - **Static Export**: Frontend uses `output: 'export'` - no server components, everything must be client-side
-- **No Dynamic Routes**: Static export cannot use `[param]` path segments. Use query params instead: `/dashboard?id=xxx` not `/dashboard/xxx`
+- **No Dynamic Routes**: Static export cannot use `[param]` path segments. Use query params instead: `/campaigns?id=xxx` not `/campaigns/xxx`
 - **Query Param Validation**: Use `useRequiredParam(key)` hook + `isUuid()` / `isInviteToken()` validators for safe param extraction
 - **Frontend layering is enforced (Page → Container → Component).** The full contract, directory layout, and the `AppLayout`/`Nav` session exception are maintained in `AGENTS.md` — read it before touching the frontend. Do not duplicate or diverge from that spec here.
 
