@@ -1,12 +1,12 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
-import type { PaginatedResponse, PaginationParams } from '@/types/pagination'
+import type { PaginationParams } from '@/types/pagination'
 import { Rpc } from '@/types/rpc'
 import type { {{PASCAL}} } from '@/types/{{SNAKE}}'
 
 export class {{PASCAL}}Service extends BaseRepository {
-  async list(params?: PaginationParams): ServiceData<PaginatedResponse<{{PASCAL}}>> {
-    return this.callRpc<PaginatedResponse<{{PASCAL}}>>(Rpc.{{PASCAL}}.List, {
+  async list(params?: PaginationParams): ServiceData<{{PASCAL}}[]> {
+    return this.callRpc<{{PASCAL}}[]>(Rpc.{{PASCAL}}.List, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
     })

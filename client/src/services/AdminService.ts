@@ -1,6 +1,6 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
-import type { PaginatedResponse, PaginationParams } from '@/types/pagination'
+import type { PaginationParams } from '@/types/pagination'
 import { Rpc } from '@/types/rpc'
 
 export type AdminUserRow = {
@@ -39,8 +39,8 @@ export type AdminPlanRow = {
 
 export class AdminService extends BaseRepository {
   // -- user management --------------------------------------------------------
-  async listAllUsers(params?: PaginationParams): ServiceData<PaginatedResponse<AdminUserRow>> {
-    return this.callRpc<PaginatedResponse<AdminUserRow>>(Rpc.Admin.ListAllUsers, {
+  async listAllUsers(params?: PaginationParams): ServiceData<AdminUserRow[]> {
+    return this.callRpc<AdminUserRow[]>(Rpc.Admin.ListAllUsers, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
     })
@@ -59,8 +59,8 @@ export class AdminService extends BaseRepository {
   }
 
   // -- subscription management -------------------------------------------------
-  async listAllSubscriptions(params?: PaginationParams): ServiceData<PaginatedResponse<AdminSubscriptionRow>> {
-    return this.callRpc<PaginatedResponse<AdminSubscriptionRow>>(Rpc.Admin.ListAllSubscriptions, {
+  async listAllSubscriptions(params?: PaginationParams): ServiceData<AdminSubscriptionRow[]> {
+    return this.callRpc<AdminSubscriptionRow[]>(Rpc.Admin.ListAllSubscriptions, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
     })
@@ -87,8 +87,8 @@ export class AdminService extends BaseRepository {
   }
 
   // -- plan management ---------------------------------------------------------
-  async listPlans(params?: PaginationParams): ServiceData<PaginatedResponse<AdminPlanRow>> {
-    return this.callRpc<PaginatedResponse<AdminPlanRow>>(Rpc.Admin.ListPlans, {
+  async listPlans(params?: PaginationParams): ServiceData<AdminPlanRow[]> {
+    return this.callRpc<AdminPlanRow[]>(Rpc.Admin.ListPlans, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
     })

@@ -17,8 +17,8 @@ export default function AdminDashboardContainer() {
       adminService.listAllUsers({ limit: 1000 }),
       adminService.listAllSubscriptions({ limit: 1000 }),
     ])
-    if (users) setUserCount(users.items.length)
-    if (subs) setSubscriptionCount(subs.items.length)
+    if (users) setUserCount(users.length)
+    if (subs) setSubscriptionCount(subs.length)
     setLoading(false)
   }, [])
 

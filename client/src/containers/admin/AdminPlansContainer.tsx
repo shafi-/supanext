@@ -1,6 +1,6 @@
 'use client'
 
-import { adminService } from '@/services/AdminService'
+import { adminService, type AdminPlanRow } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useCallback } from 'react'
 import Link from 'next/link'
@@ -17,9 +17,10 @@ export default function AdminPlansContainer() {
     hasMore,
     loadMore,
     refresh,
-  } = usePaginatedList({
+  } = usePaginatedList<AdminPlanRow>({
     fetcher: useCallback((params) => adminService.listPlans(params), []),
     enabled: isSystemAdmin,
+    cursorField: 'id',
   })
 
   const createPlan = useCallback(

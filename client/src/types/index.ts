@@ -4,7 +4,7 @@ export type { AuthState } from './auth'
 export { Rpc, type RpcFunction } from './rpc'
 export type {
   PaginationCursor,
-  PaginatedResponse,
+  PaginatedResult,
   PaginationParams,
   PaginatedListProps,
 } from './pagination'

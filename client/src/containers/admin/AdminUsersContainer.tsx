@@ -1,6 +1,6 @@
 'use client'
 
-import { adminService } from '@/services/AdminService'
+import { adminService, type AdminUserRow } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useCallback } from 'react'
 import Link from 'next/link'
@@ -17,9 +17,10 @@ export default function AdminUsersContainer() {
     hasMore,
     loadMore,
     refresh,
-  } = usePaginatedList({
+  } = usePaginatedList<AdminUserRow>({
     fetcher: useCallback((params) => adminService.listAllUsers(params), []),
     enabled: isSystemAdmin,
+    cursorField: 'id',
   })
 
   const act = useCallback(

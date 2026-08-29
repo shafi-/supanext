@@ -1,6 +1,6 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
-import type { PaginatedResponse, PaginationParams } from '@/types/pagination'
+import type { PaginationParams } from '@/types/pagination'
 import { Rpc } from '@/types/rpc'
 
 // Re-export from types/campaign.ts for backward compatibility
@@ -9,8 +9,8 @@ export type { Campaign } from '@/types/campaign'
 import type { Campaign } from '@/types/campaign'
 
 export class CampaignService extends BaseRepository {
-  async listCampaigns(params?: PaginationParams): ServiceData<PaginatedResponse<Campaign>> {
-    return this.callRpc<PaginatedResponse<Campaign>>(Rpc.Campaign.ListMy, {
+  async listCampaigns(params?: PaginationParams): ServiceData<Campaign[]> {
+    return this.callRpc<Campaign[]>(Rpc.Campaign.ListMy, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
     })
