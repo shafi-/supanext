@@ -14,7 +14,7 @@ interface {{PASCAL}}ViewProps {
   onCreate: (data: { name: string; description?: string }) => Promise<void>
   editing: {{PASCAL}} | null
   onEdit: (item: {{PASCAL}} | null) => void
-  onUpdate: (id: string, data: Partial<{{PASCAL}}>) => Promise<void>
+  onUpdate: (id: string, data: { name?: string; description?: string }) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
@@ -26,7 +26,7 @@ export function {{PASCAL}}View({
   onLoadMore,
   showCreate,
   onToggleCreate,
-  editing,
+  onEdit,
   onDelete,
 }: {{PASCAL}}ViewProps) {
   return (

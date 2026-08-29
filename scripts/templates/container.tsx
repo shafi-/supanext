@@ -13,7 +13,9 @@ export function {{PASCAL}}Container() {
     error,
     loadMore,
     hasMore,
-  } = usePaginatedList((params) => {{SNAKE}}Service.list(params))
+  } = usePaginatedList<{{PASCAL}}>({
+    fetcher: (params) => {{SNAKE}}Service.list(params),
+  })
 
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<{{PASCAL}} | null>(null)
@@ -23,7 +25,7 @@ export function {{PASCAL}}Container() {
     if (!error) setShowCreate(false)
   }, [])
 
-  const handleUpdate = useCallback(async (id: string, data: Partial<{{PASCAL}}>) => {
+  const handleUpdate = useCallback(async (id: string, data: { name?: string; description?: string }) => {
     const { error } = await {{SNAKE}}Service.update(id, data)
     if (!error) setEditing(null)
   }, [])
