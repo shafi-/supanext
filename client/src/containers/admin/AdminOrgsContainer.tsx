@@ -2,32 +2,34 @@
 
 import { adminService } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import Link from 'next/link'
 import { AdminOrgsView } from '@/components/admin/AdminOrgsView'
-import type { AdminOrgRow } from '@/components/admin/AdminOrgsView'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 export default function AdminOrgsContainer() {
   const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
-  const [orgs, setOrgs] = useState<AdminOrgRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const refresh = useCallback(async () => {
-    const { data, error: err } = await adminService.listAllOrganizations()
-    if (data) setOrgs(data)
-    setError(err)
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    if (isSystemAdmin) void refresh()
-  }, [isSystemAdmin, refresh])
+  const {
+    items: orgs,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+  } = usePaginatedList({
+    fetcher: useCallback((params) => adminService.listAllOrganizations(params), []),
+    enabled: isSystemAdmin,
+  })
 
   const act = useCallback(
     async (fn: () => Promise<{ error: string | null }>) => {
       const { error: err } = await fn()
-      if (err) setError(err)
+      if (err) {
+        // Error is already set by the hook if the refresh fails
+        // But we want to surface action errors immediately
+        console.error(err)
+      }
       await refresh()
     },
     [refresh]
@@ -51,7 +53,10 @@ export default function AdminOrgsContainer() {
     <AdminOrgsView
       orgs={orgs}
       loading={loading}
+      loadingMore={loadingMore}
       error={error}
+      hasMore={hasMore}
+      onLoadMore={loadMore}
       onApprove={(id) => act(() => adminService.approveOrganization(id))}
       onReject={(id) => act(() => adminService.rejectOrganization(id))}
       onSuspend={(id, note) => act(() => adminService.suspendOrganization(id, note))}

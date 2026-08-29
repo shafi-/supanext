@@ -76,15 +76,18 @@ describe('OrgDetailsContainer', () => {
       error: null,
     })
     mockGetMembers.mockResolvedValue({
-      data: [
-        {
-          user_id: 'u1',
-          email: 'a@b.com',
-          display_name: null,
-          role: 'member',
-          permissions: [],
-        },
-      ],
+      data: {
+        items: [
+          {
+            user_id: 'u1',
+            email: 'a@b.com',
+            display_name: null,
+            role: 'member',
+            permissions: [],
+          },
+        ],
+        next_cursor: null,
+      },
       error: null,
     })
   })
@@ -112,7 +115,7 @@ describe('OrgDetailsContainer', () => {
 
     expect((await screen.findAllByText('a@b.com')).length).toBeGreaterThan(0)
     await waitFor(() => {
-      expect(mockGetMembers).toHaveBeenCalledWith('org1')
+      expect(mockGetMembers).toHaveBeenCalledWith('org1', expect.objectContaining({ limit: 20 }))
     })
   })
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Campaign } from '@/services/CampaignService'
+import { Button } from '@/components/ui/button'
 
 interface CampaignForm {
   name: string
@@ -10,7 +11,10 @@ interface CampaignForm {
 interface OrgCampaignsProps {
   campaigns: Campaign[]
   loading: boolean
+  loadingMore: boolean
   error: string | null
+  hasMore: boolean
+  onLoadMore: () => void
   saving: boolean
   onCreate: (input: CampaignForm) => void
   onDelete: (id: string) => void
@@ -19,7 +23,10 @@ interface OrgCampaignsProps {
 export function OrgCampaigns({
   campaigns,
   loading,
+  loadingMore,
   error,
+  hasMore,
+  onLoadMore,
   saving,
   onCreate,
   onDelete,
@@ -57,7 +64,7 @@ export function OrgCampaigns({
             <span className="text-xs text-gray-400">optional</span>
             <button type="submit" disabled={saving}
               className="ml-auto px-3 py-1.5 bg-green-600 text-white rounded-md text-sm disabled:opacity-50">
-              {saving ? 'Saving…' : 'Create'}
+              {saving ? 'Saving...' : 'Create'}
             </button>
           </div>
         </form>
@@ -82,6 +89,19 @@ export function OrgCampaigns({
               </button>
             </li>
           ))}
+          {hasMore && (
+            <li className="text-center py-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLoadMore}
+                disabled={loadingMore}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                {loadingMore ? 'Loading...' : 'Load More'}
+              </Button>
+            </li>
+          )}
           {campaigns.length === 0 && (
             <p className="text-gray-500">No campaigns yet.</p>
           )}

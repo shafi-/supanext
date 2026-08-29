@@ -1,30 +1,27 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { campaignService, type Campaign } from '@/services/CampaignService'
+import { useState, useCallback } from 'react'
+import { campaignService } from '@/services/CampaignService'
 import { OrgCampaigns } from '@/components/org/OrgCampaigns'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 interface CampaignsTabContainerProps {
   orgId: string
 }
 
 export function CampaignsTabContainer({ orgId }: CampaignsTabContainerProps) {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    const { data, error: err } = await campaignService.listCampaigns(orgId)
-    if (data) setCampaigns(data)
-    if (err) setError(err)
-    setLoading(false)
-  }, [orgId])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  const {
+    items: campaigns,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+  } = usePaginatedList({
+    fetcher: useCallback((params) => campaignService.listCampaigns(orgId, params), [orgId]),
+  })
 
   const handleCreate = async (input: { name: string; description: string; goal: string }) => {
     if (!input.name.trim()) return
@@ -36,24 +33,24 @@ export function CampaignsTabContainer({ orgId }: CampaignsTabContainerProps) {
       orgId,
     })
     setSaving(false)
-    if (err) {
-      setError(err)
-      return
-    }
-    await load()
+    if (err) return
+    await refresh()
   }
 
   const handleDelete = async (id: string) => {
     const { error: err } = await campaignService.deleteCampaign(id)
-    if (err) setError(err)
-    await load()
+    if (err) return
+    await refresh()
   }
 
   return (
     <OrgCampaigns
       campaigns={campaigns}
       loading={loading}
+      loadingMore={loadingMore}
       error={error}
+      hasMore={hasMore}
+      onLoadMore={loadMore}
       saving={saving}
       onCreate={handleCreate}
       onDelete={handleDelete}

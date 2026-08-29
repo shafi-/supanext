@@ -125,13 +125,13 @@ describe('contract: service → RPC arg mapping', () => {
     })
 
     it('listAllOrganizations', async () => {
-      await adminService.listAllOrganizations(100)
-      rpcWasCalledWith('list_all_organizations', { p_limit: 100 })
+      await adminService.listAllOrganizations({ limit: 100 })
+      rpcWasCalledWith('list_all_organizations', { p_limit: 100, p_cursor: undefined })
     })
 
     it('listPlans', async () => {
       await adminService.listPlans()
-      rpcWasCalledWith('list_plans', undefined)
+      rpcWasCalledWith('list_plans', { p_limit: 20, p_cursor: undefined })
     })
 
     it('createPlan', async () => {
@@ -191,7 +191,7 @@ describe('contract: service → RPC arg mapping', () => {
   describe('MemberService', () => {
     it('getMembers', async () => {
       await memberService.getMembers(ORG)
-      rpcWasCalledWith('get_organization_members', { p_org_id: ORG })
+      rpcWasCalledWith('get_organization_members', { p_org_id: ORG, p_limit: 20, p_cursor: undefined })
     })
 
     it('changeMemberRole', async () => {
@@ -271,7 +271,7 @@ describe('contract: service → RPC arg mapping', () => {
   describe('CampaignService', () => {
     it('listCampaigns', async () => {
       await campaignService.listCampaigns(ORG)
-      rpcWasCalledWith('list_campaigns', { p_org_id: ORG })
+      rpcWasCalledWith('list_campaigns', { p_org_id: ORG, p_limit: 20, p_cursor: undefined })
     })
 
     it('createCampaign', async () => {

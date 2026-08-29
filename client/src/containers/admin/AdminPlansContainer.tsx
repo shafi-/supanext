@@ -2,27 +2,25 @@
 
 import { adminService } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import Link from 'next/link'
 import { AdminPlansView } from '@/components/admin/AdminPlansView'
-import type { AdminPlan } from '@/components/admin/AdminPlansView'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 export default function AdminPlansContainer() {
   const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
-  const [plans, setPlans] = useState<AdminPlan[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const refresh = useCallback(async () => {
-    const { data, error: err } = await adminService.listPlans()
-    if (data) setPlans(data)
-    setError(err)
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    if (isSystemAdmin) void refresh()
-  }, [isSystemAdmin, refresh])
+  const {
+    items: plans,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+  } = usePaginatedList({
+    fetcher: useCallback((params) => adminService.listPlans(params), []),
+    enabled: isSystemAdmin,
+  })
 
   const createPlan = useCallback(
     async (input: {
@@ -78,7 +76,10 @@ export default function AdminPlansContainer() {
     <AdminPlansView
       plans={plans}
       loading={loading}
+      loadingMore={loadingMore}
       error={error}
+      hasMore={hasMore}
+      onLoadMore={loadMore}
       onCreatePlan={createPlan}
       onToggleFeature={toggleFeature}
     />

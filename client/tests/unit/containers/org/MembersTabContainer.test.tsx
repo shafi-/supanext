@@ -21,15 +21,18 @@ describe('MembersTabContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue({
-      data: [
-        {
-          user_id: 'u1',
-          email: 'a@b.com',
-          display_name: null,
-          role: 'member',
-          permissions: [],
-        },
-      ],
+      data: {
+        items: [
+          {
+            user_id: 'u1',
+            email: 'a@b.com',
+            display_name: null,
+            role: 'member',
+            permissions: [],
+          },
+        ],
+        next_cursor: null,
+      },
       error: null,
     })
     mockChangeMemberRole.mockResolvedValue({ data: undefined, error: null })

@@ -13,8 +13,8 @@ export default function AdminDashboardContainer() {
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    const { data } = await adminService.listAllOrganizations()
-    if (data) setOrgs(data)
+    const { data } = await adminService.listAllOrganizations({ limit: 1000 })
+    if (data) setOrgs(data.items)
     setLoading(false)
   }, [])
 

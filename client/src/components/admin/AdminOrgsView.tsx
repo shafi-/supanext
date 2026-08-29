@@ -13,7 +13,10 @@ export interface AdminOrgRow {
 interface AdminOrgsViewProps {
   orgs: AdminOrgRow[]
   loading: boolean
+  loadingMore: boolean
   error: string | null
+  hasMore: boolean
+  onLoadMore: () => void
   onApprove: (id: string) => Promise<void>
   onReject: (id: string) => Promise<void>
   onSuspend: (id: string, note: string) => Promise<void>
@@ -23,7 +26,10 @@ interface AdminOrgsViewProps {
 export function AdminOrgsView({
   orgs,
   loading,
+  loadingMore,
   error,
+  hasMore,
+  onLoadMore,
   onApprove,
   onReject,
   onSuspend,
@@ -107,6 +113,21 @@ export function AdminOrgsView({
                 </td>
               </tr>
             ))}
+            {hasMore && (
+              <tr>
+                <td colSpan={4} className="text-center py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLoadMore}
+                    disabled={loadingMore}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    {loadingMore ? 'Loading...' : 'Load More'}
+                  </Button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

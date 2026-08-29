@@ -28,7 +28,10 @@ interface CreatePlanInput {
 interface AdminPlansViewProps {
   plans: AdminPlan[]
   loading: boolean
+  loadingMore: boolean
   error: string | null
+  hasMore: boolean
+  onLoadMore: () => void
   onCreatePlan: (input: CreatePlanInput) => Promise<string | null>
   onToggleFeature: (planId: string, featureCode: string) => Promise<void>
 }
@@ -36,7 +39,10 @@ interface AdminPlansViewProps {
 export function AdminPlansView({
   plans,
   loading,
+  loadingMore,
   error,
+  hasMore,
+  onLoadMore,
   onCreatePlan,
   onToggleFeature,
 }: AdminPlansViewProps) {
@@ -182,6 +188,21 @@ export function AdminPlansView({
                 </td>
               </tr>
             ))}
+            {hasMore && (
+              <tr>
+                <td colSpan={5} className="text-center py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLoadMore}
+                    disabled={loadingMore}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    {loadingMore ? 'Loading...' : 'Load More'}
+                  </Button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

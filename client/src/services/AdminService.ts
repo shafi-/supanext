@@ -1,6 +1,15 @@
 import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
+import type { PaginatedResponse, PaginationParams } from '@/types/pagination'
 import { Rpc } from '@/types/rpc'
+
+export type AdminOrgRow = { id: string; name: string; slug: string; status: string; suspension_note: string | null; created_at: string }
+
+export type AdminPlanRow = {
+  id: string; code: string; name: string; description: string | null;
+  price_minor: number; currency: string; billing_interval: string;
+  is_active: boolean; features: string[]
+}
 
 /**
  * System-administration operations.
@@ -40,20 +49,18 @@ export class AdminService extends BaseRepository {
   }
 
   // -- console listings ---------------------------------------------------------
-  async listAllOrganizations(limit = 200): ServiceData<
-    Array<{ id: string; name: string; slug: string; status: string; suspension_note: string | null; created_at: string }>
-  > {
-    return this.callRpc(Rpc.Admin.ListAllOrgs, { p_limit: limit })
+  async listAllOrganizations(params?: PaginationParams): ServiceData<PaginatedResponse<AdminOrgRow>> {
+    return this.callRpc<PaginatedResponse<AdminOrgRow>>(Rpc.Admin.ListAllOrgs, {
+      p_limit: params?.limit ?? 20,
+      p_cursor: params?.cursor,
+    })
   }
 
-  async listPlans(): ServiceData<
-    Array<{
-      id: string; code: string; name: string; description: string | null;
-      price_minor: number; currency: string; billing_interval: string;
-      is_active: boolean; features: string[]
-    }>
-  > {
-    return this.callRpc(Rpc.Admin.ListPlans)
+  async listPlans(params?: PaginationParams): ServiceData<PaginatedResponse<AdminPlanRow>> {
+    return this.callRpc<PaginatedResponse<AdminPlanRow>>(Rpc.Admin.ListPlans, {
+      p_limit: params?.limit ?? 20,
+      p_cursor: params?.cursor,
+    })
   }
 
   // -- plans & subscriptions (system-administered only) ------------------------

@@ -19,11 +19,11 @@ export default function AdminSubscriptionsContainer() {
 
   const refresh = useCallback(async () => {
     const [{ data: orgData }, { data: planData }] = await Promise.all([
-      adminService.listAllOrganizations(),
-      adminService.listPlans(),
+      adminService.listAllOrganizations({ limit: 1000 }),
+      adminService.listPlans({ limit: 1000 }),
     ])
-    if (orgData) setOrgs(orgData)
-    if (planData) setPlans(planData)
+    if (orgData) setOrgs(orgData.items)
+    if (planData) setPlans(planData.items)
     setLoading(false)
   }, [])
 

@@ -1,4 +1,5 @@
 import { Permission } from '@/types/permissions'
+import { Button } from '@/components/ui/button'
 
 export interface MemberRow {
   user_id: string
@@ -11,7 +12,10 @@ export interface MemberRow {
 interface OrgMembersProps {
   members: MemberRow[]
   loading: boolean
+  loadingMore: boolean
   error: string | null
+  hasMore: boolean
+  onLoadMore: () => void
   isAdmin: boolean
   grantablePermissions: Permission[]
   onRoleChange: (userId: string, role: string) => void
@@ -22,7 +26,10 @@ interface OrgMembersProps {
 export function OrgMembers({
   members,
   loading,
+  loadingMore,
   error,
+  hasMore,
+  onLoadMore,
   isAdmin,
   grantablePermissions,
   onRoleChange,
@@ -71,6 +78,19 @@ export function OrgMembers({
             )}
           </li>
         ))}
+        {hasMore && (
+          <li className="text-center py-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onLoadMore}
+              disabled={loadingMore}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              {loadingMore ? 'Loading...' : 'Load More'}
+            </Button>
+          </li>
+        )}
         {members.length === 0 && <p className="text-gray-500">No members yet.</p>}
       </ul>
     </div>
