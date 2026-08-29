@@ -12,7 +12,7 @@ export function InviteContainer() {
   const router = useRouter()
   const { user } = useAuth()
   const [status, setStatus] = useState<InviteStatus>('loading')
-  const [orgName, setOrgName] = useState('')
+  const [inviterName, setInviterName] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function InviteContainer() {
         setStatus('expired')
         return
       }
-      setOrgName(data.org_name)
+      setInviterName(data.inviter_name)
       setStatus('valid')
     }
     validate()
@@ -59,14 +59,14 @@ export function InviteContainer() {
       return
     }
     setStatus('accepted')
-    setTimeout(() => router.push('/orgs'), 2000)
+    setTimeout(() => router.push('/dashboard'), 2000)
   }
 
   return (
     <InviteView
       token={token}
       status={status}
-      orgName={orgName}
+      inviterName={inviterName}
       errorMsg={errorMsg}
       isLoggedIn={!!user}
       onAccept={handleAccept}

@@ -37,20 +37,17 @@ test.describe('Protected Pages', () => {
     })
   })
 
-  test.describe('Orgs Page', () => {
+  test.describe('Dashboard Page', () => {
     test('redirects to login when not authenticated', async ({ page }) => {
-      await page.goto('/orgs/')
-      const url = page.url()
-      const isOnOrgs = url.includes('/orgs/')
-      const isOnLogin = url.includes('/auth/login/')
-      expect(isOnOrgs || isOnLogin).toBeTruthy()
+      await page.goto('/dashboard/')
+      await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10000 })
     })
 
-    test('loads orgs page when authenticated', async ({ page }) => {
+    test('loads dashboard when authenticated', async ({ page }) => {
       await registerOrLogin(page)
 
-      await page.goto('/orgs/')
-      await expect(page.locator('body')).toBeVisible()
+      await page.goto('/dashboard/')
+      await expect(page.locator('h1')).toContainText('Dashboard')
     })
   })
 

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 
 interface ProfileComponentProps {
   email?: string
-  orgName?: string | null
   displayName: string | null
   loading?: boolean
   saving: boolean
@@ -15,7 +14,6 @@ interface ProfileComponentProps {
 
 export function ProfileComponent({
   email,
-  orgName,
   displayName,
   saving,
   onSave,
@@ -57,10 +55,6 @@ export function ProfileComponent({
             onChange={(e) => setAvatarUrl(e.target.value)}
             className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
           />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Active Organization</label>
-          <p className="mt-1 text-gray-900">{orgName ?? 'None'}</p>
         </div>
         <Button
           onClick={async () => {

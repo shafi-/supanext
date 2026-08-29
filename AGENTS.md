@@ -26,16 +26,16 @@ Page (thin)  →  Container (backend + state; calls Services, renders Components
 
 ### Container (`src/containers/<feature>/<Name>Container.tsx`)
 - The ONLY layer that communicates with the backend.
-- Calls services and/or data hooks (`useAuth`, `useOrganization`, `useSubscription`,
+- Calls services and/or data hooks (`useAuth`, `useSessionContext`, `useSubscription`,
   `useProfile`, `useSystemAdmin`, `useRequiredParam`, …) and owns local state
   (loading / error / form).
 - Renders pure Components, passing data + callbacks as props.
-- Reuse an existing container when features overlap (e.g. admin can reuse org containers).
+- Reuse an existing container when features overlap (e.g. admin can reuse user containers).
 
 ### Component (`src/components/<feature>/<Name>.tsx`)
 - PURE presentation. Receives data + callbacks as props.
 - NO imports of `@/services` / `@/repositories`.
-- NO data-fetching hooks (`useAuth`, `useSubscription`, `useOrganization`, `useProfile`,
+- NO data-fetching hooks (`useAuth`, `useSubscription`, `useSessionContext`, `useProfile`,
   `useSystemAdmin`, `useRequiredParam`, `useQueryParam`).
 - Use `import type` (never a runtime import) for types from a service file.
 - Local UI state (`useState`/`useEffect` for UI only) is fine.
@@ -50,9 +50,9 @@ Page (thin)  →  Container (backend + state; calls Services, renders Components
 - `src/services/`, `src/repositories/`, `src/hooks/`, `src/types/` — backend/state layers.
 
 ## Session context exception
-`AuthProvider` / `OrganizationProvider` (root `app/layout.tsx`) hold session state and
+`AuthProvider` / `SessionContextProvider` (root `app/layout.tsx`) hold session state and
 expose it via hooks. `AppLayout` (the shell) may read those hooks and pass `user` /
-`currentOrg` / `isSystemAdmin` down to `Nav` as props. `Nav` itself is pure. Do not add
+`isSystemAdmin` down to `Nav` as props. `Nav` itself is pure. Do not add
 backend/data-hook calls to other components.
 
 ## Adding a feature page

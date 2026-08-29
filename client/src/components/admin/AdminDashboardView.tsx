@@ -1,53 +1,38 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
-export interface AdminOrgRow {
-  id: string
-  name: string
-  slug: string
-  status: string
-  suspension_note: string | null
-  created_at: string
-}
-
 interface AdminDashboardViewProps {
-  pending: number
-  active: number
-  suspended: number
+  userCount: number
+  subscriptionCount: number
   onRunSysAdmin: (op: 'grant' | 'revoke', email: string) => Promise<string | null>
 }
 
 export function AdminDashboardView({
-  pending,
-  active,
-  suspended,
+  userCount,
+  subscriptionCount,
   onRunSysAdmin,
 }: AdminDashboardViewProps) {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">System Admin</h1>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500">Pending Approval</p>
-          <p className="text-2xl font-bold">{pending}</p>
+          <p className="text-sm text-gray-500">Total Users</p>
+          <p className="text-2xl font-bold">{userCount}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500">Active Orgs</p>
-          <p className="text-2xl font-bold">{active}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500">Suspended</p>
-          <p className="text-2xl font-bold">{suspended}</p>
+          <p className="text-sm text-gray-500">Active Subscriptions</p>
+          <p className="text-2xl font-bold">{subscriptionCount}</p>
         </div>
       </div>
-      <Link href="/admin/orgs" className="text-blue-600 hover:underline">
-        Manage Organizations
+      <Link href="/admin/users" className="text-blue-600 hover:underline">
+        Manage Users
       </Link>
       <Link href="/admin/plans" className="text-blue-600 hover:underline block">
         Subscription Plans
       </Link>
       <Link href="/admin/subscriptions" className="text-blue-600 hover:underline block">
-        Organization Subscriptions
+        User Subscriptions
       </Link>
       <SystemAdminCard onRunSysAdmin={onRunSysAdmin} />
     </div>

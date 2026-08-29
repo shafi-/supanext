@@ -2,19 +2,16 @@
 
 import { Nav } from './Nav'
 import { useAuth } from '@/hooks/useAuth'
-import { useOrganization } from '@/hooks/useOrganization'
-import { useSystemAdmin } from '@/hooks/useSystemAdmin'
+import { useSessionContext } from '@/hooks/useSessionContext'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth()
-  const { currentOrg } = useOrganization()
-  const { isSystemAdmin } = useSystemAdmin()
+  const { isSystemAdmin } = useSessionContext()
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav
         user={user ? { email: user.email } : null}
-        currentOrg={currentOrg ? { id: currentOrg.id } : null}
         isSystemAdmin={isSystemAdmin}
         onSignOut={() => void signOut()}
       />

@@ -15,12 +15,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_invitation: { Args: { p_token: string }; Returns: string }
-      approve_organization: { Args: { p_org_id: string }; Returns: undefined }
-      assign_subscription: {
+      accept_platform_invitation: { Args: { p_token: string }; Returns: boolean }
+      assign_user_subscription: {
         Args: {
           p_ends_at?: string
-          p_org_id: string
+          p_user_id: string
           p_plan_id: string
           p_starts_at?: string
           p_status?: "trialing" | "active" | "past_due" | "canceled" | "expired"
@@ -28,14 +27,6 @@ export type Database = {
         Returns: string
       }
       bootstrap_system_admin: { Args: never; Returns: boolean }
-      change_member_role: {
-        Args: {
-          p_org_id?: string
-          p_role: "admin" | "member"
-          p_user_id: string
-        }
-        Returns: undefined
-      }
       create_campaign: {
         Args: {
           p_currency?: string
@@ -43,7 +34,6 @@ export type Database = {
           p_ends_at?: string
           p_goal_minor?: number
           p_name: string
-          p_org_id?: string
           p_starts_at?: string
         }
         Returns: string
@@ -59,69 +49,24 @@ export type Database = {
         }
         Returns: string
       }
-      deactivate_subscription: {
-        Args: { p_org_id: string }
-        Returns: undefined
-      }
+      deactivate_user_subscription: { Args: { p_user_id: string }; Returns: undefined }
       delete_campaign: { Args: { p_campaign_id: string }; Returns: undefined }
       find_user_id_by_email: { Args: { p_email: string }; Returns: string }
-      get_current_subscription: { Args: { p_org_id?: string }; Returns: Json }
-      get_invitation_preview: { Args: { p_token: string }; Returns: Json }
-      get_my_organizations: { Args: never; Returns: Json }
-      get_org_stats: { Args: { p_org_id?: string }; Returns: Json }
-      get_org_public: { Args: { p_org_id?: string }; Returns: Json }
-      get_organization_members: { Args: { p_org_id?: string }; Returns: Json }
-      get_organization_status: { Args: { p_org_id?: string }; Returns: Json }
+      get_my_subscription: { Args: never; Returns: Json }
+      get_platform_invitation_preview: { Args: { p_token: string }; Returns: Json }
       get_session_context: { Args: never; Returns: Json }
       grant_system_admin: { Args: { p_user_id: string }; Returns: undefined }
-      invite_member: {
-        Args: {
-          p_email: string
-          p_org_id?: string
-          p_role?: "admin" | "member"
-        }
-        Returns: Json
-      }
-      list_all_organizations: { Args: { p_limit?: number }; Returns: Json }
-      list_campaigns: { Args: { p_org_id?: string }; Returns: Json }
+      invite_platform_user: { Args: { p_email: string }; Returns: Json }
+      list_all_subscriptions: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
+      list_all_users: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
+      list_my_campaigns: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
       list_plans: { Args: never; Returns: Json }
-      list_public_organizations: { Args: { p_limit?: number }; Returns: Json }
-      reject_organization: {
-        Args: { p_note?: string; p_org_id: string }
-        Returns: undefined
-      }
-      remove_member: {
-        Args: { p_org_id?: string; p_user_id: string }
-        Returns: undefined
-      }
-      request_organization: {
-        Args: { p_name: string; p_slug: string }
-        Returns: string
-      }
-      revoke_invitation: {
-        Args: { p_invitation_id: string }
-        Returns: undefined
-      }
+      revoke_platform_invitation: { Args: { p_invitation_id: string }; Returns: undefined }
       revoke_system_admin: { Args: { p_user_id: string }; Returns: undefined }
-      set_active_organization: { Args: { p_org_id: string }; Returns: Json }
-      set_member_permission: {
-        Args: {
-          p_granted: boolean
-          p_org_id?: string
-          p_permission: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
       set_plan_feature: {
         Args: { p_enabled: boolean; p_feature_code: string; p_plan_id: string }
         Returns: undefined
       }
-      suspend_organization: {
-        Args: { p_note: string; p_org_id: string }
-        Returns: undefined
-      }
-      unsuspend_organization: { Args: { p_org_id: string }; Returns: undefined }
       update_campaign: {
         Args: {
           p_campaign_id: string

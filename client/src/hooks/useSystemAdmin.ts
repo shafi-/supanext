@@ -1,12 +1,12 @@
 'use client'
 
-import { useOrganization } from './useOrganization'
+import { useSessionContext } from './useSessionContext'
 
 /**
  * System-admin flag comes from api.get_session_context — exposed via
- * OrganizationProvider to avoid a duplicate RPC call.
+ * SessionContextProvider to avoid a duplicate RPC call.
  */
 export function useSystemAdmin() {
-  const { isSystemAdmin, adminLoading: loading } = useOrganization()
+  const { isSystemAdmin, loading } = useSessionContext()
   return { isSystemAdmin, loading, refetch: () => Promise.resolve() }
 }

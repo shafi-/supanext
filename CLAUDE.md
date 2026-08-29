@@ -10,7 +10,7 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 
 ### Frontend Architecture
 - **Static Export**: Frontend uses `output: 'export'` - no server components, everything must be client-side
-- **No Dynamic Routes**: Static export cannot use `[param]` path segments. Use query params instead: `/orgs?id=xxx` not `/orgs/xxx`
+- **No Dynamic Routes**: Static export cannot use `[param]` path segments. Use query params instead: `/admin/users?id=xxx` not `/admin/users/xxx`
 - **Query Param Validation**: Use `useRequiredParam(key)` hook + `isUuid()` / `isInviteToken()` validators for safe param extraction
 - **Frontend layering is enforced (Page → Container → Component).** The full contract, directory layout, and the `AppLayout`/`Nav` session exception are maintained in `AGENTS.md` — read it before touching the frontend. Do not duplicate or diverge from that spec here.
 
@@ -21,7 +21,7 @@ This is a NextJS + Supabase project starter template with pre-built common compo
 - **Client-Side Auth**: Auth via supabase-js directly (sign-in/sign-up/reset in `useAuth` provider). Edge functions scaffolded in `supabase/functions/` — add only when server-side secrets are needed
 - **Shared Logic**: `/backend` holds business logic shared across edge functions (scaffold, currently empty)
 - **Repository Pattern**: BaseRepository wraps RPC calls, extended by feature-specific repositories
-- **RPC Type Safety**: `Rpc` const in `types/rpc.ts` uses `satisfies DbFunction` to validate function names against `database.ts` at compile time. Services use nested `Rpc.Group.Action` pattern (e.g., `Rpc.Todo.Create`).
+- **RPC Type Safety**: `Rpc` const in `types/rpc.ts` uses `satisfies DbFunction` to validate function names against `database.ts` at compile time. Services use nested `Rpc.Group.Action` pattern (e.g., `Rpc.Campaign.Create`).
 - **Explicit Grant Surface**: `REVOKE ... FROM PUBLIC` + explicit GRANTs at the end of the security hardening migration declare the full callable API. New RPCs must be added there.
 
 ### Database Architecture Philosophy
@@ -74,7 +74,7 @@ See `/supabase/README.md` for detailed database architecture documentation.
 
 ### Auth Flow
 - Client-side supabase-js handles: sign-up, sign-in, password reset (via `useAuth` provider)
-- Frontend uses custom hooks: `useAuth()`, `useRequireAuth()`, `useHasRole()`
+- Frontend uses custom hooks: `useAuth()`, `useRequireAuth()`, `useSessionContext()`
 - Auth provider wraps application, manages auth state
 - Unauthorized access redirects to login or shows access denied
 
@@ -232,7 +232,8 @@ supabase functions deploy
 
 ### Auth Implementation
 - Use `useRequireAuth()` in containers for protected pages
-- Use `useHasRole('role_name')` for role-based access
+- Use `useSessionContext()` for session state (displayName, isSystemAdmin)
+- Use `useSystemAdmin()` for admin-only access checks
 - Declare page access at top of page component
 - Auth provider handles redirects automatically
 

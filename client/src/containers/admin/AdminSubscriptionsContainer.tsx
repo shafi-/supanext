@@ -6,23 +6,23 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AdminSubscriptionsView } from '@/components/admin/AdminSubscriptionsView'
 import type {
-  AdminSubscriptionOrgRow,
+  AdminSubscriptionUserRow,
   AdminSubscriptionPlanRow,
 } from '@/components/admin/AdminSubscriptionsView'
 
 export default function AdminSubscriptionsContainer() {
   const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
-  const [orgs, setOrgs] = useState<AdminSubscriptionOrgRow[]>([])
+  const [users, setUsers] = useState<AdminSubscriptionUserRow[]>([])
   const [plans, setPlans] = useState<AdminSubscriptionPlanRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
-    const [{ data: orgData }, { data: planData }] = await Promise.all([
-      adminService.listAllOrganizations({ limit: 1000 }),
+    const [{ data: userData }, { data: planData }] = await Promise.all([
+      adminService.listAllUsers({ limit: 1000 }),
       adminService.listPlans({ limit: 1000 }),
     ])
-    if (orgData) setOrgs(orgData.items)
+    if (userData) setUsers(userData.items)
     if (planData) setPlans(planData.items)
     setLoading(false)
   }, [])
@@ -32,9 +32,9 @@ export default function AdminSubscriptionsContainer() {
   }, [isSystemAdmin, refresh])
 
   const assign = useCallback(
-    async (orgId: string, planId: string) => {
+    async (userId: string, planId: string) => {
       const { error: err } = await adminService.assignSubscription(
-        orgId,
+        userId,
         planId,
         'active',
         new Date().toISOString()
@@ -46,8 +46,8 @@ export default function AdminSubscriptionsContainer() {
   )
 
   const deactivate = useCallback(
-    async (orgId: string) => {
-      const { error: err } = await adminService.deactivateSubscription(orgId)
+    async (userId: string) => {
+      const { error: err } = await adminService.deactivateSubscription(userId)
       if (err) setError(err)
       await refresh()
     },
@@ -60,6 +60,7 @@ export default function AdminSubscriptionsContainer() {
     return (
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+        <p className="mt-2 text-gray-600">You don&apos;t have permission to access this page.</p>
         <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">
           Back to home
         </Link>
@@ -69,7 +70,7 @@ export default function AdminSubscriptionsContainer() {
 
   return (
     <AdminSubscriptionsView
-      orgs={orgs}
+      users={users}
       plans={plans}
       loading={loading}
       error={error}

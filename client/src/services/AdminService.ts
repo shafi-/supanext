@@ -3,38 +3,49 @@ import type { ServiceData } from '@/types'
 import type { PaginatedResponse, PaginationParams } from '@/types/pagination'
 import { Rpc } from '@/types/rpc'
 
-export type AdminOrgRow = { id: string; name: string; slug: string; status: string; suspension_note: string | null; created_at: string }
-
-export type AdminPlanRow = {
-  id: string; code: string; name: string; description: string | null;
-  price_minor: number; currency: string; billing_interval: string;
-  is_active: boolean; features: string[]
+export type AdminUserRow = {
+  id: string
+  email: string
+  display_name: string | null
+  created_at: string
+  is_system_admin: boolean
+  has_subscription: boolean
 }
 
-/**
- * System-administration operations.
- * Every method here requires the caller to be a system admin server-side;
- * the database rejects everyone else regardless of UI.
- */
+export type AdminSubscriptionRow = {
+  id: string
+  user_id: string
+  email: string
+  display_name: string | null
+  plan_id: string
+  plan_code: string
+  plan_name: string
+  status: string
+  starts_at: string
+  ends_at: string | null
+}
+
+export type AdminPlanRow = {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  price_minor: number
+  currency: string
+  billing_interval: string
+  is_active: boolean
+  features: string[]
+}
+
 export class AdminService extends BaseRepository {
-  // -- organization lifecycle -------------------------------------------------
-  async approveOrganization(orgId: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Org.Approve, { p_org_id: orgId })
+  // -- user management --------------------------------------------------------
+  async listAllUsers(params?: PaginationParams): ServiceData<PaginatedResponse<AdminUserRow>> {
+    return this.callRpc<PaginatedResponse<AdminUserRow>>(Rpc.Admin.ListAllUsers, {
+      p_limit: params?.limit ?? 20,
+      p_cursor: params?.cursor,
+    })
   }
 
-  async rejectOrganization(orgId: string, note?: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Org.Reject, { p_org_id: orgId, p_note: note })
-  }
-
-  async suspendOrganization(orgId: string, note: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Org.Suspend, { p_org_id: orgId, p_note: note })
-  }
-
-  async unsuspendOrganization(orgId: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Org.Unsuspend, { p_org_id: orgId })
-  }
-
-  // -- system admin management ------------------------------------------------
   async grantSystemAdmin(userId: string): ServiceData<void> {
     return this.callRpc<void>(Rpc.SystemAdmin.Grant, { p_user_id: userId })
   }
@@ -43,19 +54,39 @@ export class AdminService extends BaseRepository {
     return this.callRpc<void>(Rpc.SystemAdmin.Revoke, { p_user_id: userId })
   }
 
-  /** Resolves a user id from email; null when unknown. Sysadmin-only. */
   async findUserIdByEmail(email: string): ServiceData<string | null> {
     return this.callRpc<string | null>(Rpc.Admin.FindUserByEmail, { p_email: email })
   }
 
-  // -- console listings ---------------------------------------------------------
-  async listAllOrganizations(params?: PaginationParams): ServiceData<PaginatedResponse<AdminOrgRow>> {
-    return this.callRpc<PaginatedResponse<AdminOrgRow>>(Rpc.Admin.ListAllOrgs, {
+  // -- subscription management -------------------------------------------------
+  async listAllSubscriptions(params?: PaginationParams): ServiceData<PaginatedResponse<AdminSubscriptionRow>> {
+    return this.callRpc<PaginatedResponse<AdminSubscriptionRow>>(Rpc.Admin.ListAllSubscriptions, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
     })
   }
 
+  async assignSubscription(
+    userId: string,
+    planId: string,
+    status: 'trialing' | 'active' | 'past_due' = 'active',
+    startsAt?: string,
+    endsAt?: string
+  ): ServiceData<string> {
+    return this.callRpc<string>(Rpc.Subscription.Assign, {
+      p_user_id: userId,
+      p_plan_id: planId,
+      p_status: status,
+      p_starts_at: startsAt,
+      p_ends_at: endsAt,
+    })
+  }
+
+  async deactivateSubscription(userId: string): ServiceData<void> {
+    return this.callRpc<void>(Rpc.Subscription.Deactivate, { p_user_id: userId })
+  }
+
+  // -- plan management ---------------------------------------------------------
   async listPlans(params?: PaginationParams): ServiceData<PaginatedResponse<AdminPlanRow>> {
     return this.callRpc<PaginatedResponse<AdminPlanRow>>(Rpc.Admin.ListPlans, {
       p_limit: params?.limit ?? 20,
@@ -63,7 +94,6 @@ export class AdminService extends BaseRepository {
     })
   }
 
-  // -- plans & subscriptions (system-administered only) ------------------------
   async createPlan(input: {
     code: string
     name: string
@@ -88,26 +118,6 @@ export class AdminService extends BaseRepository {
       p_feature_code: featureCode,
       p_enabled: enabled,
     })
-  }
-
-  async assignSubscription(
-    orgId: string,
-    planId: string,
-    status: 'trialing' | 'active' | 'past_due' = 'active',
-    startsAt?: string,
-    endsAt?: string
-  ): ServiceData<string> {
-    return this.callRpc<string>(Rpc.Subscription.Assign, {
-      p_org_id: orgId,
-      p_plan_id: planId,
-      p_status: status,
-      p_starts_at: startsAt,
-      p_ends_at: endsAt,
-    })
-  }
-
-  async deactivateSubscription(orgId: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Subscription.Deactivate, { p_org_id: orgId })
   }
 }
 

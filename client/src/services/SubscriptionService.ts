@@ -2,8 +2,6 @@ import { BaseRepository } from '@/repositories/BaseRepository'
 import type { ServiceData } from '@/types'
 import { Rpc } from '@/types/rpc'
 
-// Re-export from types/subscription.ts for backward compatibility
-// (CurrentSubscription is defined here, not in the dead types/subscription.ts)
 export interface CurrentSubscription {
   id?: string
   plan_id?: string
@@ -15,10 +13,10 @@ export interface CurrentSubscription {
   features: string[]
 }
 
-/** Read-only for members. Assignment/deactivation lives in AdminService (system-admin only). */
+/** Read-only for users. Assignment/deactivation lives in AdminService (system-admin only). */
 export class SubscriptionService extends BaseRepository {
-  async getCurrentSubscription(orgId?: string): ServiceData<CurrentSubscription> {
-    return this.callRpc<CurrentSubscription>(Rpc.Subscription.GetCurrent, { p_org_id: orgId })
+  async getMySubscription(): ServiceData<CurrentSubscription> {
+    return this.callRpc<CurrentSubscription>(Rpc.Subscription.GetMy)
   }
 }
 

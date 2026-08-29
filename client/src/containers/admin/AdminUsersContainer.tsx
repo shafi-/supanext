@@ -4,13 +4,13 @@ import { adminService } from '@/services/AdminService'
 import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useCallback } from 'react'
 import Link from 'next/link'
-import { AdminOrgsView } from '@/components/admin/AdminOrgsView'
+import { AdminUsersView } from '@/components/admin/AdminUsersView'
 import { usePaginatedList } from '@/hooks/usePaginatedList'
 
-export default function AdminOrgsContainer() {
+export default function AdminUsersContainer() {
   const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
   const {
-    items: orgs,
+    items: users,
     loading,
     loadingMore,
     error,
@@ -18,7 +18,7 @@ export default function AdminOrgsContainer() {
     loadMore,
     refresh,
   } = usePaginatedList({
-    fetcher: useCallback((params) => adminService.listAllOrganizations(params), []),
+    fetcher: useCallback((params) => adminService.listAllUsers(params), []),
     enabled: isSystemAdmin,
   })
 
@@ -26,8 +26,6 @@ export default function AdminOrgsContainer() {
     async (fn: () => Promise<{ error: string | null }>) => {
       const { error: err } = await fn()
       if (err) {
-        // Error is already set by the hook if the refresh fails
-        // But we want to surface action errors immediately
         console.error(err)
       }
       await refresh()
@@ -50,17 +48,15 @@ export default function AdminOrgsContainer() {
   }
 
   return (
-    <AdminOrgsView
-      orgs={orgs}
+    <AdminUsersView
+      users={users}
       loading={loading}
       loadingMore={loadingMore}
       error={error}
       hasMore={hasMore}
       onLoadMore={loadMore}
-      onApprove={(id) => act(() => adminService.approveOrganization(id))}
-      onReject={(id) => act(() => adminService.rejectOrganization(id))}
-      onSuspend={(id, note) => act(() => adminService.suspendOrganization(id, note))}
-      onUnsuspend={(id) => act(() => adminService.unsuspendOrganization(id))}
+      onGrantAdmin={(id) => act(() => adminService.grantSystemAdmin(id))}
+      onRevokeAdmin={(id) => act(() => adminService.revokeSystemAdmin(id))}
     />
   )
 }

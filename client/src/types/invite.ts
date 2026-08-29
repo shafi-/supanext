@@ -1,24 +1,18 @@
-export interface Invite {
+export interface PlatformInvitation {
   id: string
-  organization_id: string
   email: string
-  token: string
-  role: string | null
-  invited_by: string | null
+  invited_by: string
+  status: 'pending' | 'accepted' | 'revoked' | 'expired'
   expires_at: string
   accepted_at: string | null
   created_at: string
 }
 
-export interface InviteValidation {
-  invite_id: string
-  org_id: string
-  org_name: string
-  invite_email: string
-  invite_role: string
+export interface InvitationPreview {
+  inviter_name: string
+  expires_at: string
 }
 
 export interface CreateInviteDto {
   email: string
-  role?: string
 }

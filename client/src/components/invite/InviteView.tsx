@@ -3,7 +3,7 @@ export type InviteStatus = 'loading' | 'valid' | 'invalid' | 'expired' | 'accept
 interface InviteViewProps {
   token: string | null
   status: InviteStatus
-  orgName: string
+  inviterName: string
   errorMsg: string
   isLoggedIn: boolean
   onAccept: () => void
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 export function InviteView({
   token,
   status,
-  orgName,
+  inviterName,
   errorMsg,
   isLoggedIn,
   onAccept,
@@ -47,13 +47,15 @@ export function InviteView({
       {status === 'accepted' && (
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-green-600">Welcome!</h1>
-          <p className="text-gray-600">Redirecting to your organizations...</p>
+          <p className="text-gray-600">Redirecting to your dashboard...</p>
         </div>
       )}
       {status === 'valid' && !isLoggedIn && (
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">You&apos;ve been invited!</h1>
-          <p className="text-gray-600">Sign in to join <strong>{orgName}</strong></p>
+          <p className="text-gray-600">
+            {inviterName ? <>{inviterName} invited you to join</> : <>You&apos;ve been invited to join</>} the platform.
+          </p>
           <Link
             href={`/auth/login?next=${encodeURIComponent(`/invite?token=${token}`)}`}
             className="bg-blue-600 text-white px-4 py-2 rounded-md inline-block hover:bg-blue-700"
@@ -73,7 +75,7 @@ export function InviteView({
       )}
       {status === 'valid' && isLoggedIn && (
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Join {orgName}</h1>
+          <h1 className="text-2xl font-bold">Join the Platform</h1>
           <p className="text-gray-600">Click below to accept the invitation.</p>
           <Button onClick={onAccept} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
             Accept Invitation

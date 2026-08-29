@@ -10,9 +10,9 @@ export interface SubscriptionPlan {
   updated_at: string
 }
 
-export interface OrganizationSubscription {
+export interface UserSubscription {
   id: string
-  organization_id: string
+  user_id: string
   plan_id: string
   status: 'active' | 'paused' | 'expired' | 'canceled'
   billing_period: 'monthly' | 'yearly'
@@ -22,28 +22,12 @@ export interface OrganizationSubscription {
   updated_at: string
 }
 
-export interface OrganizationSubscriptionView extends OrganizationSubscription {
-  org_name: string
+export interface UserSubscriptionView extends UserSubscription {
+  user_email: string
+  user_display_name: string | null
   plan_name: string
   price_monthly: number
   price_yearly: number
-}
-
-export interface SubscriptionHistory {
-  id: string
-  organization_id: string
-  plan_id: string
-  action: 'subscribed' | 'upgraded' | 'downgraded' | 'expired' | 'renewed' | 'canceled' | 'paused' | 'payment'
-  amount: number
-  payment_status: 'paid' | 'pending' | 'failed'
-  invoice_number: string | null
-  notes: string | null
-  created_at: string
-}
-
-export interface SubscriptionHistoryView extends SubscriptionHistory {
-  org_name: string
-  plan_name: string
 }
 
 export interface CurrentSubscription {

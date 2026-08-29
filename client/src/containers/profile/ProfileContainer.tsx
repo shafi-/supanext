@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRequireAuth } from '@/hooks/useAuth'
-import { useOrganization } from '@/hooks/useOrganization'
+import { useSessionContext } from '@/hooks/useSessionContext'
 import { useProfile } from '@/hooks/useProfile'
 import { ProfileComponent } from '@/components/profile/ProfileComponent'
 
 export function ProfileContainer() {
   const { user } = useRequireAuth()
-  const { currentOrg, displayName: sessionName } = useOrganization()
+  const { displayName: sessionName } = useSessionContext()
   const { updateProfile, saving } = useProfile()
   const [error, setError] = useState<string | null>(null)
   const [sessionDisplayName, setSessionDisplayName] = useState<string | null>(null)
@@ -34,7 +34,6 @@ export function ProfileContainer() {
       {error && <p className="text-red-600">{error}</p>}
       <ProfileComponent
         email={user?.email}
-        orgName={currentOrg?.name ?? null}
         displayName={sessionDisplayName}
         saving={saving}
         onSave={handleSave}

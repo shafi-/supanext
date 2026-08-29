@@ -2,23 +2,19 @@
 
 import Link from 'next/link'
 import type { AuthUser } from '@/types/auth'
-import type { OrgStats, SessionOrganization } from '@/types/organization'
+import type { CurrentSubscription } from '@/services/SubscriptionService'
 import { Button } from '@/components/ui/button'
 
 interface DashboardViewProps {
   user: AuthUser | null
-  currentOrg: SessionOrganization | null
-  organizations: SessionOrganization[]
-  stats: OrgStats | null
+  subscription: CurrentSubscription | null
   hasFeature: (featureCode: string) => boolean
   onSignOut: () => void
 }
 
 export function DashboardView({
   user,
-  currentOrg,
-  organizations,
-  stats,
+  subscription,
   hasFeature,
   onSignOut,
 }: DashboardViewProps) {
@@ -65,14 +61,27 @@ export function DashboardView({
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">My Organizations</h3>
-            <p className="text-gray-600 mb-4">Manage your organizations and team members.</p>
-            <Link
-              href="/orgs"
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
-            >
-              View Organizations →
-            </Link>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">My Subscription</h3>
+            {subscription ? (
+              <div>
+                <p className="text-gray-600 mb-2">
+                  Plan: <span className="font-medium">{subscription.plan_name}</span>
+                </p>
+                <p className="text-gray-600 mb-4">
+                  Status: <span className="font-medium">{subscription.status}</span>
+                </p>
+                {hasFeature('fundraising') && (
+                  <Link
+                    href="/campaigns"
+                    className="text-indigo-600 hover:text-indigo-700 font-medium"
+                  >
+                    Manage Campaigns →
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-500">No active subscription.</p>
+            )}
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow">
@@ -85,39 +94,6 @@ export function DashboardView({
               Update Profile →
             </Link>
           </div>
-        </div>
-
-        <div className="mt-8 bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            {currentOrg ? `Stats — ${currentOrg.name}` : 'Quick Stats'}
-          </h3>
-          {!currentOrg ? (
-            <p className="text-gray-500">
-              Select an organization to see stats.{' '}
-              <Link href="/orgs" className="text-indigo-600 hover:underline">
-                Go to Organizations →
-              </Link>
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-indigo-600">{organizations.length}</p>
-                <p className="text-gray-600">Organizations</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-green-600">
-                  {stats?.member_count ?? '—'}
-                </p>
-                <p className="text-gray-600">Team Members</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-blue-600">
-                  {hasFeature('fundraising') ? (stats?.campaign_count ?? 0) : '—'}
-                </p>
-                <p className="text-gray-600">Campaigns</p>
-              </div>
-            </div>
-          )}
         </div>
       </main>
     </div>

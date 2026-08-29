@@ -5,16 +5,20 @@ import { useSystemAdmin } from '@/hooks/useSystemAdmin'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AdminDashboardView } from '@/components/admin/AdminDashboardView'
-import type { AdminOrgRow } from '@/components/admin/AdminDashboardView'
 
 export default function AdminDashboardContainer() {
   const { isSystemAdmin, loading: adminLoading } = useSystemAdmin()
-  const [orgs, setOrgs] = useState<AdminOrgRow[]>([])
+  const [userCount, setUserCount] = useState(0)
+  const [subscriptionCount, setSubscriptionCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    const { data } = await adminService.listAllOrganizations({ limit: 1000 })
-    if (data) setOrgs(data.items)
+    const [{ data: users }, { data: subs }] = await Promise.all([
+      adminService.listAllUsers({ limit: 1000 }),
+      adminService.listAllSubscriptions({ limit: 1000 }),
+    ])
+    if (users) setUserCount(users.items.length)
+    if (subs) setSubscriptionCount(subs.items.length)
     setLoading(false)
   }, [])
 
@@ -51,11 +55,11 @@ export default function AdminDashboardContainer() {
 
   if (loading) return <div>Loading...</div>
 
-  const pending = orgs.filter((o) => o.status === 'pending').length
-  const active = orgs.filter((o) => o.status === 'active').length
-  const suspended = orgs.filter((o) => o.status === 'suspended').length
-
   return (
-    <AdminDashboardView pending={pending} active={active} suspended={suspended} onRunSysAdmin={onRunSysAdmin} />
+    <AdminDashboardView
+      userCount={userCount}
+      subscriptionCount={subscriptionCount}
+      onRunSysAdmin={onRunSysAdmin}
+    />
   )
 }

@@ -13,27 +13,23 @@ import { Rpc } from '@/types/rpc'
 import type { Database } from '@/types/database'
 
 // Compile-time check: every Rpc value must be a keyof Database['api']['Functions'].
-// If this line fails to compile, an Rpc value references a non-existent DB function.
 type DbFunctionNames = keyof Database['api']['Functions']
 type AssertRpcSubset = {
   [K in keyof typeof Rpc as (typeof Rpc)[K] extends Record<string, infer V>
     ? V extends DbFunctionNames ? K : never
     : never]: true
 }
-// If you see a TS error here, an Rpc group contains a value not in database.ts:
 const _compileCheck: AssertRpcSubset = {} as AssertRpcSubset
 
 // All Rpc values as a flat runtime array
 const ALL_RPC_VALUES: string[] = [
   ...Object.values(Rpc.Session),
   ...Object.values(Rpc.Profile),
-  ...Object.values(Rpc.Org),
-  ...Object.values(Rpc.Member),
-  ...Object.values(Rpc.Invite),
   ...Object.values(Rpc.Subscription),
   ...Object.values(Rpc.Plan),
   ...Object.values(Rpc.Campaign),
   ...Object.values(Rpc.Admin),
+  ...Object.values(Rpc.Invitation),
   ...Object.values(Rpc.SystemAdmin),
 ]
 
@@ -52,13 +48,10 @@ vi.mock('@/lib/supabase', () => ({
 
 import { adminService } from '@/services/AdminService'
 import { inviteService } from '@/services/InviteService'
-import { memberService } from '@/services/MemberService'
-import { organizationService } from '@/services/OrganizationService'
 import { profileService } from '@/services/ProfileService'
 import { subscriptionService } from '@/services/SubscriptionService'
 import { campaignService } from '@/services/CampaignService'
 
-const ORG = '00000000-0000-4000-8000-00000000aaaa'
 const USER = '00000000-0000-4000-8000-00000000bbbb'
 const PLAN = '00000000-0000-4000-8000-00000000cccc'
 
@@ -76,8 +69,6 @@ function rpcWasCalledWith(name: string, params?: Record<string, unknown>) {
 
 describe('contract: Rpc → database.ts', () => {
   it('compile-time: every Rpc value is a valid database function name', () => {
-    // The satisfies DbFunction check in rpc.ts + the compileCheck above
-    // ensure this at the type level. This test exists to document it.
     expect(ALL_RPC_VALUES.length).toBeGreaterThan(0)
   })
 })
@@ -89,26 +80,6 @@ describe('contract: service → RPC arg mapping', () => {
   })
 
   describe('AdminService', () => {
-    it('approveOrganization', async () => {
-      await adminService.approveOrganization(ORG)
-      rpcWasCalledWith('approve_organization', { p_org_id: ORG })
-    })
-
-    it('rejectOrganization', async () => {
-      await adminService.rejectOrganization(ORG, 'reason')
-      rpcWasCalledWith('reject_organization', { p_org_id: ORG, p_note: 'reason' })
-    })
-
-    it('suspendOrganization', async () => {
-      await adminService.suspendOrganization(ORG, 'terms')
-      rpcWasCalledWith('suspend_organization', { p_org_id: ORG, p_note: 'terms' })
-    })
-
-    it('unsuspendOrganization', async () => {
-      await adminService.unsuspendOrganization(ORG)
-      rpcWasCalledWith('unsuspend_organization', { p_org_id: ORG })
-    })
-
     it('grantSystemAdmin', async () => {
       await adminService.grantSystemAdmin(USER)
       rpcWasCalledWith('grant_system_admin', { p_user_id: USER })
@@ -124,9 +95,14 @@ describe('contract: service → RPC arg mapping', () => {
       rpcWasCalledWith('find_user_id_by_email', { p_email: 'a@b.c' })
     })
 
-    it('listAllOrganizations', async () => {
-      await adminService.listAllOrganizations({ limit: 100 })
-      rpcWasCalledWith('list_all_organizations', { p_limit: 100, p_cursor: undefined })
+    it('listAllUsers', async () => {
+      await adminService.listAllUsers({ limit: 100 })
+      rpcWasCalledWith('list_all_users', { p_limit: 100, p_cursor: undefined })
+    })
+
+    it('listAllSubscriptions', async () => {
+      await adminService.listAllSubscriptions({ limit: 50 })
+      rpcWasCalledWith('list_all_subscriptions', { p_limit: 50, p_cursor: undefined })
     })
 
     it('listPlans', async () => {
@@ -153,104 +129,38 @@ describe('contract: service → RPC arg mapping', () => {
     })
 
     it('assignSubscription', async () => {
-      await adminService.assignSubscription(ORG, PLAN)
-      rpcWasCalledWith('assign_subscription', {
-        p_org_id: ORG, p_plan_id: PLAN, p_status: 'active',
+      await adminService.assignSubscription(USER, PLAN)
+      rpcWasCalledWith('assign_user_subscription', {
+        p_user_id: USER, p_plan_id: PLAN, p_status: 'active',
         p_starts_at: undefined, p_ends_at: undefined,
       })
     })
 
     it('deactivateSubscription', async () => {
-      await adminService.deactivateSubscription(ORG)
-      rpcWasCalledWith('deactivate_subscription', { p_org_id: ORG })
+      await adminService.deactivateSubscription(USER)
+      rpcWasCalledWith('deactivate_user_subscription', { p_user_id: USER })
     })
   })
 
   describe('InviteService', () => {
-    it('inviteMember', async () => {
-      await inviteService.inviteMember('x@y.z', 'admin', ORG)
-      rpcWasCalledWith('invite_member', { p_email: 'x@y.z', p_role: 'admin', p_org_id: ORG })
+    it('inviteUser', async () => {
+      await inviteService.inviteUser('x@y.z')
+      rpcWasCalledWith('invite_platform_user', { p_email: 'x@y.z' })
     })
 
     it('getInvitationPreview', async () => {
       await inviteService.getInvitationPreview('tok')
-      rpcWasCalledWith('get_invitation_preview', { p_token: 'tok' })
+      rpcWasCalledWith('get_platform_invitation_preview', { p_token: 'tok' })
     })
 
     it('acceptInvitation', async () => {
       await inviteService.acceptInvitation('tok')
-      rpcWasCalledWith('accept_invitation', { p_token: 'tok' })
+      rpcWasCalledWith('accept_platform_invitation', { p_token: 'tok' })
     })
 
     it('revokeInvitation', async () => {
       await inviteService.revokeInvitation('inv-id')
-      rpcWasCalledWith('revoke_invitation', { p_invitation_id: 'inv-id' })
-    })
-  })
-
-  describe('MemberService', () => {
-    it('getMembers', async () => {
-      await memberService.getMembers(ORG)
-      rpcWasCalledWith('get_organization_members', { p_org_id: ORG, p_limit: 20, p_cursor: undefined })
-    })
-
-    it('changeMemberRole', async () => {
-      await memberService.changeMemberRole(USER, 'admin', ORG)
-      rpcWasCalledWith('change_member_role', { p_user_id: USER, p_role: 'admin', p_org_id: ORG })
-    })
-
-    it('removeMember', async () => {
-      await memberService.removeMember(USER, ORG)
-      rpcWasCalledWith('remove_member', { p_user_id: USER, p_org_id: ORG })
-    })
-
-    it('setMemberPermission', async () => {
-      await memberService.setMemberPermission(USER, 'fundraising.view', true, ORG)
-      rpcWasCalledWith('set_member_permission', {
-        p_user_id: USER, p_permission: 'fundraising.view', p_granted: true, p_org_id: ORG,
-      })
-    })
-  })
-
-  describe('OrganizationService', () => {
-    it('requestOrganization', async () => {
-      await organizationService.requestOrganization('Acme', 'acme')
-      rpcWasCalledWith('request_organization', { p_name: 'Acme', p_slug: 'acme' })
-    })
-
-    it('getMyOrganizations', async () => {
-      await organizationService.getMyOrganizations()
-      rpcWasCalledWith('get_my_organizations', undefined)
-    })
-
-    it('getSessionContext', async () => {
-      await organizationService.getSessionContext()
-      rpcWasCalledWith('get_session_context', undefined)
-    })
-
-    it('setActiveOrganization', async () => {
-      await organizationService.setActiveOrganization(ORG)
-      rpcWasCalledWith('set_active_organization', { p_org_id: ORG })
-    })
-
-    it('getOrganizationStatus', async () => {
-      await organizationService.getOrganizationStatus(ORG)
-      rpcWasCalledWith('get_organization_status', { p_org_id: ORG })
-    })
-
-    it('listPublicOrganizations', async () => {
-      await organizationService.listPublicOrganizations(10)
-      rpcWasCalledWith('list_public_organizations', { p_limit: 10 })
-    })
-
-    it('getOrgStats', async () => {
-      await organizationService.getOrgStats(ORG)
-      rpcWasCalledWith('get_org_stats', { p_org_id: ORG })
-    })
-
-    it('getOrgPublic', async () => {
-      await organizationService.getOrgPublic('acme')
-      rpcWasCalledWith('get_org_public', { p_org_id: 'acme' })
+      rpcWasCalledWith('revoke_platform_invitation', { p_invitation_id: 'inv-id' })
     })
   })
 
@@ -262,23 +172,23 @@ describe('contract: service → RPC arg mapping', () => {
   })
 
   describe('SubscriptionService', () => {
-    it('getCurrentSubscription', async () => {
-      await subscriptionService.getCurrentSubscription(ORG)
-      rpcWasCalledWith('get_current_subscription', { p_org_id: ORG })
+    it('getMySubscription', async () => {
+      await subscriptionService.getMySubscription()
+      rpcWasCalledWith('get_my_subscription', undefined)
     })
   })
 
   describe('CampaignService', () => {
     it('listCampaigns', async () => {
-      await campaignService.listCampaigns(ORG)
-      rpcWasCalledWith('list_campaigns', { p_org_id: ORG, p_limit: 20, p_cursor: undefined })
+      await campaignService.listCampaigns()
+      rpcWasCalledWith('list_my_campaigns', { p_limit: 20, p_cursor: undefined })
     })
 
     it('createCampaign', async () => {
-      await campaignService.createCampaign({ name: 'C', orgId: ORG })
+      await campaignService.createCampaign({ name: 'C' })
       rpcWasCalledWith('create_campaign', {
         p_name: 'C', p_description: undefined, p_goal_minor: undefined,
-        p_currency: undefined, p_starts_at: undefined, p_ends_at: undefined, p_org_id: ORG,
+        p_currency: undefined, p_starts_at: undefined, p_ends_at: undefined,
       })
     })
 
@@ -303,12 +213,9 @@ describe('contract: service → RPC arg mapping', () => {
 })
 
 // Structured error codes: SQL functions embed these prefixes in error messages.
-// Frontend must match on code prefix, not message text.
 const ERROR_CODES = {
   INV01: 'Invitation not found',
   INV02: 'Invitation expired or already used',
-  INV03: 'Invitation email does not match authenticated user',
-  INV04: 'Email not provided in invitation payload',
 } as const
 
 describe('contract: error codes are stable', () => {
@@ -320,16 +227,10 @@ describe('contract: error codes are stable', () => {
   })
 })
 
-// Status enum constants — must match SQL ENUMs in 20240828000000_status_enums.sql
-import { OrgStatus, InvitationStatus, SubscriptionStatus } from '@/types/status'
+// Status enum constants — must match SQL ENUMs
+import { InvitationStatus, SubscriptionStatus } from '@/types/status'
 
 describe('contract: status enums match SQL ENUMs', () => {
-  it('OrgStatus values are the canonical set', () => {
-    expect(Object.values(OrgStatus).sort()).toEqual([
-      'active', 'pending', 'rejected', 'suspended',
-    ])
-  })
-
   it('InvitationStatus values are the canonical set', () => {
     expect(Object.values(InvitationStatus).sort()).toEqual([
       'accepted', 'expired', 'pending', 'revoked',
@@ -358,10 +259,7 @@ describe('contract: permission codes match SQL', () => {
       'fundraising.manage',
       'fundraising.update',
       'fundraising.view',
-      'organization.members.change_role',
-      'organization.members.invite',
-      'organization.members.permissions.manage',
-      'organization.members.remove',
+      'system.plans.manage',
     ])
   })
 
@@ -375,6 +273,7 @@ describe('contract: permission codes match SQL', () => {
 // RPCs with no service wrapper (called directly from scripts, not frontend):
 const EXCLUDED_FROM_COVERAGE = new Set([
   'bootstrap_system_admin', // called from scripts/bootstrap-admin.sh, not frontend
+  'get_session_context', // called through SessionService inside useSessionContext hook, not a standalone service
 ])
 
 describe('contract: coverage — every Rpc has a service test', () => {

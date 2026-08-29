@@ -1,27 +1,19 @@
 'use client'
 
-import { useOrganization } from './useOrganization'
+import { useSubscription } from './useSubscription'
+import { useSystemAdmin } from './useSystemAdmin'
 
 /**
- * Client-side gating only — the database remains the source of truth.
- * Org admins implicitly hold every organization-scoped permission;
- * members hold exactly what admins granted them (member.permissions).
+ * Client-side permission gating.
+ * User-centric: permissions are based on subscription features and system admin status.
  */
 export function usePermissions() {
-  const { membership, currentOrg } = useOrganization()
-
-  const role = membership?.role ?? null
-  const isOrgAdmin = (): boolean => role === 'admin'
-  const isOrgMember = (): boolean => role !== null
-  // No owner concept in the current schema.
-  const isOrgOwner = (): boolean => false
+  const { subscription, hasFeature } = useSubscription()
+  const { isSystemAdmin } = useSystemAdmin()
 
   return {
-    role,
-    isOrgAdmin,
-    isOrgMember,
-    isOrgOwner,
-    orgName: currentOrg?.name ?? null,
-    orgStatus: currentOrg?.status ?? null,
+    isSystemAdmin,
+    hasFeature,
+    subscription,
   }
 }

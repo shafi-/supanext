@@ -41,16 +41,14 @@ test.describe.serial('Admin Pages', () => {
     const isAdmin = h1Text?.includes('System Admin')
 
     if (isAdmin) {
-      await expect(page.locator('text=Organizations').first()).toBeVisible({ timeout: 10000 })
-      await expect(page.locator('text=Users').first()).toBeVisible()
-      await expect(page.locator('text=Members').first()).toBeVisible()
-      await expect(page.locator('text=Recent Signups')).toBeVisible()
+      await expect(page.locator('text=Total Users').first()).toBeVisible({ timeout: 10000 })
+      await expect(page.locator('text=Active Subscriptions').first()).toBeVisible()
     } else {
       await expect(page.locator('h1')).toContainText('Access Denied')
     }
   })
 
-  test('shows Manage Organizations link when admin', async ({ page }) => {
+  test('shows Manage Users link when admin', async ({ page }) => {
     await page.goto('/auth/login/')
     await page.locator('#email').fill(ADMIN_EMAIL)
     await page.locator('#password').fill(ADMIN_PASSWORD)
@@ -60,11 +58,11 @@ test.describe.serial('Admin Pages', () => {
     await page.goto('/admin/', { waitUntil: 'networkidle' })
     const h1Text = await page.locator('h1').textContent()
     if (h1Text?.includes('System Admin')) {
-      await expect(page.getByRole('link', { name: 'Manage Organizations' })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('link', { name: 'Manage Users' })).toBeVisible({ timeout: 10000 })
     }
   })
 
-  test('Manage Organizations link navigates to orgs page', async ({ page }) => {
+  test('Manage Users link navigates to users page', async ({ page }) => {
     await page.goto('/auth/login/')
     await page.locator('#email').fill(ADMIN_EMAIL)
     await page.locator('#password').fill(ADMIN_PASSWORD)
@@ -74,26 +72,25 @@ test.describe.serial('Admin Pages', () => {
     await page.goto('/admin/', { waitUntil: 'networkidle' })
     const h1Text = await page.locator('h1').textContent()
     if (h1Text?.includes('System Admin')) {
-      await page.getByRole('link', { name: 'Manage Organizations' }).click()
-      await expect(page).toHaveURL(/\/admin\/orgs/)
+      await page.getByRole('link', { name: 'Manage Users' }).click()
+      await expect(page).toHaveURL(/\/admin\/users/)
     }
   })
 
-  test('loads organizations table when admin', async ({ page }) => {
+  test('loads users table when admin', async ({ page }) => {
     await page.goto('/auth/login/')
     await page.locator('#email').fill(ADMIN_EMAIL)
     await page.locator('#password').fill(ADMIN_PASSWORD)
     await page.getByRole('button', { name: 'Sign In' }).click()
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
 
-    await page.goto('/admin/orgs/', { waitUntil: 'networkidle' })
+    await page.goto('/admin/users/', { waitUntil: 'networkidle' })
     const h1Text = await page.locator('h1').textContent()
     if (h1Text?.includes('Access Denied')) {
       await expect(page.locator('h1')).toContainText('Access Denied')
     } else {
-      await expect(page.locator('th:has-text("Name")')).toBeVisible({ timeout: 10000 })
-      await expect(page.locator('th:has-text("Slug")')).toBeVisible()
-      await expect(page.locator('th:has-text("Members")')).toBeVisible()
+      await expect(page.locator('th:has-text("Email")')).toBeVisible({ timeout: 10000 })
+      await expect(page.locator('th:has-text("Admin")')).toBeVisible()
     }
   })
 })

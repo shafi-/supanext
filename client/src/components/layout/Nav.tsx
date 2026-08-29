@@ -6,12 +6,11 @@ import { useState } from 'react'
 
 interface NavProps {
   user: { email: string } | null
-  currentOrg: { id: string } | null
   isSystemAdmin: boolean
   onSignOut: () => void
 }
 
-export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
+export function Nav({ user, isSystemAdmin, onSignOut }: NavProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const router = useRouter()
 
@@ -23,13 +22,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
             <Link href="/" className="font-bold text-xl">SupaNext</Link>
             {user && (
               <div className="hidden md:flex gap-4">
-                <Link href="/orgs" className="text-gray-600 hover:text-gray-900">Organizations</Link>
-                {currentOrg && (
-                  <>
-                    <Link href={`/orgs?id=${currentOrg.id}`} className="text-gray-600 hover:text-gray-900">Dashboard</Link>
-                    <Link href={`/orgs?id=${currentOrg.id}`} className="text-gray-600 hover:text-gray-900">Members</Link>
-                  </>
-                )}
+                <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
                 {isSystemAdmin && (
                   <Link href="/admin" className="text-gray-600 hover:text-gray-900">Admin</Link>
                 )}
@@ -54,10 +47,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
           <div className="px-4 py-2 space-y-2">
             {user && (
               <>
-                <Link href="/orgs" className="block py-2" onClick={() => setMobileOpen(false)}>Organizations</Link>
-                {currentOrg && (
-                  <Link href={`/orgs?id=${currentOrg.id}`} className="block py-2" onClick={() => setMobileOpen(false)}>Dashboard</Link>
-                )}
+                <Link href="/dashboard" className="block py-2" onClick={() => setMobileOpen(false)}>Dashboard</Link>
                 {isSystemAdmin && (
                   <Link href="/admin" className="block py-2" onClick={() => setMobileOpen(false)}>Admin</Link>
                 )}

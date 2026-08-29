@@ -9,9 +9,8 @@ export type { Campaign } from '@/types/campaign'
 import type { Campaign } from '@/types/campaign'
 
 export class CampaignService extends BaseRepository {
-  async listCampaigns(orgId?: string, params?: PaginationParams): ServiceData<PaginatedResponse<Campaign>> {
-    return this.callRpc<PaginatedResponse<Campaign>>(Rpc.Campaign.List, {
-      p_org_id: orgId,
+  async listCampaigns(params?: PaginationParams): ServiceData<PaginatedResponse<Campaign>> {
+    return this.callRpc<PaginatedResponse<Campaign>>(Rpc.Campaign.ListMy, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
     })
@@ -24,7 +23,6 @@ export class CampaignService extends BaseRepository {
     currency?: string
     startsAt?: string
     endsAt?: string
-    orgId?: string
   }): ServiceData<string> {
     return this.callRpc<string>(Rpc.Campaign.Create, {
       p_name: input.name,
@@ -33,7 +31,6 @@ export class CampaignService extends BaseRepository {
       p_currency: input.currency,
       p_starts_at: input.startsAt,
       p_ends_at: input.endsAt,
-      p_org_id: input.orgId,
     })
   }
 
