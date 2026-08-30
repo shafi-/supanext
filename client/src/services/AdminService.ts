@@ -37,6 +37,19 @@ export type AdminPlanRow = {
   features: string[]
 }
 
+export type AuditLogRow = {
+  id: string
+  occurred_at: string
+  actor_user_id: string | null
+  actor_email: string
+  actor_display_name: string
+  organization_id: string | null
+  action: string
+  entity_type: string | null
+  entity_id: string | null
+  metadata: Record<string, unknown>
+}
+
 export class AdminService extends BaseRepository {
   // -- user management --------------------------------------------------------
   async listAllUsers(params?: PaginationParams): ServiceData<AdminUserRow[]> {
@@ -90,6 +103,13 @@ export class AdminService extends BaseRepository {
   async listPlans(params?: PaginationParams): ServiceData<AdminPlanRow[]> {
     return this.callRpc<AdminPlanRow[]>(Rpc.Admin.ListPlans, {
       p_limit: params?.limit ?? 20,
+      p_cursor: params?.cursor,
+    })
+  }
+
+  async listAuditLog(params?: PaginationParams): ServiceData<AuditLogRow[]> {
+    return this.callRpc<AuditLogRow[]>(Rpc.Admin.ListAuditLog, {
+      p_limit: params?.limit ?? 50,
       p_cursor: params?.cursor,
     })
   }

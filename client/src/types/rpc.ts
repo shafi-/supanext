@@ -36,6 +36,7 @@ export const Rpc = {
     ListAllUsers: 'list_all_users' satisfies DbFunction,
     ListAllSubscriptions: 'list_all_subscriptions' satisfies DbFunction,
     ListPlans: 'list_plans' satisfies DbFunction,
+    ListAuditLog: 'list_audit_log' satisfies DbFunction,
   },
   Invitation: {
     Invite: 'invite_platform_user' satisfies DbFunction,

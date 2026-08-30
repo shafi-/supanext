@@ -34,6 +34,9 @@ export function AdminDashboardView({
       <Link href="/admin/subscriptions" className="text-blue-600 hover:underline block">
         User Subscriptions
       </Link>
+      <Link href="/admin/audit" className="text-blue-600 hover:underline block">
+        Audit Log
+      </Link>
       <SystemAdminCard onRunSysAdmin={onRunSysAdmin} />
     </div>
   )

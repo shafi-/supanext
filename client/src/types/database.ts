@@ -59,6 +59,7 @@ export type Database = {
       invite_platform_user: { Args: { p_email: string }; Returns: Json }
       list_all_subscriptions: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
       list_all_users: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
+      list_audit_log: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
       list_my_campaigns: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
       list_plans: { Args: never; Returns: Json }
       revoke_platform_invitation: { Args: { p_invitation_id: string }; Returns: undefined }
