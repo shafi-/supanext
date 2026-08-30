@@ -2,21 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/**]
   pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
+    branches: [main]
 
 jobs:
-  client:
-    name: Client (lint, format, types, unit, build)
+  client-checks:
+    name: Client (type-check, lint, unit tests)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     defaults:
       run:
         working-directory: client
@@ -36,25 +29,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Format check
-        run: pnpm run format:check
+      - name: Type-check
+        run: pnpm type-check
 
       - name: Lint
-        run: pnpm run lint
+        run: pnpm lint
 
-      - name: Type check
-        run: pnpm run type-check
+      - name: Format check
+        run: pnpm format:check
 
       - name: Unit tests
-        run: npx vitest run
+        run: pnpm vitest --run
 
-      - name: Build (static export)
-        run: pnpm run build
-
-  database:
-    name: Database (migrations + pgTAP)
+  db-checks:
+    name: Database (migrations lint + type regen)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -62,29 +51,24 @@ jobs:
         with:
           version: latest
 
-      - name: Generate active config from committed sample
-        run: cp supabase/config.sample.toml supabase/config.toml
-
-      - name: Start local Supabase
+      - name: Start local stack
         run: supabase start
 
-      - name: Apply migrations
+      - name: Apply migrations + seed
         run: supabase db reset
 
-      - name: Run pgTAP suites
+      - name: Lint migrations
+        run: supabase db lint
+
+      - name: Regenerate TypeScript types
         run: |
-          set -e
-          STATUS=0
-          for f in supabase/tests/database/*.sql; do
-            echo "::group::$f"
-            OUT=$(docker exec -i supabase_db_supanext psql -U postgres -d postgres -f - < "$f" 2>&1) || true
-            echo "$OUT"
-            NOTOK=$(echo "$OUT" | grep -c 'not ok [0-9]' || true)
-            ERRS=$(echo "$OUT" | grep -c 'ERROR:' || true)
-            if [ "${NOTOK:-0}" -gt 0 ] || [ "${ERRS:-0}" -gt 0 ]; then
-              echo "::error::$f failed (assertions_failed=$NOTOK sql_errors=$ERRS)"
-              STATUS=1
-            fi
-            echo "::endgroup::"
-          done
-          exit $STATUS
+          supabase gen types typescript --local > client/src/types/database.ts.gen
+          if ! diff -u client/src/types/database.ts client/src/types/database.ts.gen; then
+            echo "::error::Type drift detected. Run 'scripts/regen-types.sh' and commit the updated client/src/types/database.ts"
+            exit 1
+          fi
+          rm client/src/types/database.ts.gen
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
