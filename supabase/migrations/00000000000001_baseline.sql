@@ -1,6 +1,12 @@
--- Supabase initial migration
--- Multi-tenant SaaS: organizations, memberships, invitations,
--- permissions, plans/subscriptions, fundraising campaigns, API RPCs and RLS.
+-- ====================================================================
+-- 00000000000001_baseline.sql
+-- Consolidated baseline. All schema, functions, RLS, and grants in one
+-- migration. Replaces the previous 5-file history (squashed). This is
+-- what fresh deployments apply. Schema is the org-centric variant:
+-- organizations own campaigns, members, subscriptions, invitations.
+-- ====================================================================
+
+begin;
 
 begin;
 
@@ -2043,5 +2049,437 @@ grant execute on function api.list_campaigns(text) to authenticated;
 grant execute on function api.create_campaign(text, text, bigint, text, timestamptz, timestamptz, text) to authenticated;
 grant execute on function api.update_campaign(text, text, text, bigint, text, timestamptz, timestamptz) to authenticated;
 grant execute on function api.delete_campaign(text) to authenticated;
+
+
+create or replace function api.get_org_public(p_org_id text)
+returns jsonb
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', o.id,
+    'name', o.name,
+    'slug', o.slug,
+    'status', o.status,
+    'created_at', o.created_at
+  )
+  from app.organizations o
+  where (o.id = p_org_id or o.slug = lower(trim(p_org_id)))
+    and o.status in ('active', 'pending')
+  limit 1;
+$$;
+
+grant execute on function api.get_org_public(text) to anon, authenticated;
+
+-- Add cursor-based pagination to listing RPCs
+-- Each function now accepts p_limit and p_cursor, returns {items, next_cursor}
+
+-- -----------------------------------------------------------------------------
+-- list_all_organizations: add p_cursor, return paginated shape
+-- -----------------------------------------------------------------------------
+create or replace function api.list_all_organizations(
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+  v_next_cursor text;
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select id, name, slug, status,
+      case when status = 'suspended' then suspension_note end as suspension_note,
+      created_at
+    from app.organizations
+    where (p_cursor IS NULL OR id::text > p_cursor)
+    order by id asc
+    limit v_limit + 1
+  ) t;
+
+  -- Extract next cursor if there are more rows
+  if jsonb_array_length(v_rows) > v_limit then
+    v_rows := v_rows - (-1);  -- remove the extra peek row
+    v_next_cursor := v_rows -> (-1) ->> 'id';
+  else
+    v_next_cursor := null;
+  end if;
+
+  return jsonb_build_object(
+    'items', v_rows,
+    'next_cursor', v_next_cursor
+  );
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- list_plans: add p_limit + p_cursor, return paginated shape
+-- -----------------------------------------------------------------------------
+create or replace function api.list_plans(
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+  v_next_cursor text;
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select sp.id, sp.code, sp.name, sp.description,
+      sp.price_minor, sp.currency, sp.billing_interval, sp.is_active,
+      coalesce((
+        select jsonb_agg(f.code order by f.code)
+        from app.plan_features pf join app.features f on f.id = pf.feature_id
+        where pf.plan_id = sp.id
+      ), '[]'::jsonb) as features
+    from app.subscription_plans sp
+    where (p_cursor IS NULL OR sp.id::text > p_cursor)
+    order by sp.id asc
+    limit v_limit + 1
+  ) t;
+
+  if jsonb_array_length(v_rows) > v_limit then
+    v_rows := v_rows - (-1);
+    v_next_cursor := v_rows -> (-1) ->> 'id';
+  else
+    v_next_cursor := null;
+  end if;
+
+  return jsonb_build_object(
+    'items', v_rows,
+    'next_cursor', v_next_cursor
+  );
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- list_campaigns: add p_limit + p_cursor, return paginated shape
+-- -----------------------------------------------------------------------------
+create or replace function api.list_campaigns(
+  p_org_id uuid default null,
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+  v_next_cursor text;
+begin
+  if not security.can_perform('fundraising.view', v_org_id) then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select to_jsonb(c.*) as data
+    from app.fundraising_campaigns c
+    where c.organization_id = v_org_id
+      and (p_cursor IS NULL OR c.id::text > p_cursor)
+    order by c.id asc
+    limit v_limit + 1
+  ) t;
+
+  -- Unwrap the nested data field
+  select coalesce(jsonb_agg(item -> 'data'), '[]'::jsonb) into v_rows
+  from jsonb_array_elements(v_rows) as item;
+
+  if jsonb_array_length(v_rows) > v_limit then
+    v_rows := v_rows - (-1);
+    v_next_cursor := v_rows -> (-1) ->> 'id';
+  else
+    v_next_cursor := null;
+  end if;
+
+  return jsonb_build_object(
+    'items', v_rows,
+    'next_cursor', v_next_cursor
+  );
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- get_organization_members: add p_limit + p_cursor, return paginated shape
+-- -----------------------------------------------------------------------------
+create or replace function api.get_organization_members(
+  p_org_id uuid default null,
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+  v_next_cursor text;
+begin
+  if not security.is_org_member(v_org_id) then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select jsonb_build_object(
+      'user_id', om.user_id,
+      'email', u.email,
+      'display_name', p.display_name,
+      'role', om.role,
+      'permissions', coalesce((
+        select jsonb_agg(pm.code order by pm.code)
+        from app.organization_member_permissions omp
+        join app.permissions pm on pm.id = omp.permission_id
+        where omp.organization_id = om.organization_id
+          and omp.user_id = om.user_id
+      ), '[]'::jsonb)
+    ) as data
+    from app.organization_members om
+    join auth.users u on u.id = om.user_id
+    left join app.profiles p on p.id = om.user_id
+    where om.organization_id = v_org_id
+      and (p_cursor IS NULL OR om.user_id::text > p_cursor)
+    order by om.user_id asc
+    limit v_limit + 1
+  ) t;
+
+  -- Unwrap the nested data field
+  select coalesce(jsonb_agg(item -> 'data'), '[]'::jsonb) into v_rows
+  from jsonb_array_elements(v_rows) as item;
+
+  if jsonb_array_length(v_rows) > v_limit then
+    v_rows := v_rows - (-1);
+    v_next_cursor := v_rows -> (-1) ->> 'user_id';
+  else
+    v_next_cursor := null;
+  end if;
+
+  return jsonb_build_object(
+    'items', v_rows,
+    'next_cursor', v_next_cursor
+  );
+end;
+$$;
+
+-- Update grants to include the new parameter signatures
+grant execute on function api.list_all_organizations(int, text) to authenticated;
+grant execute on function api.list_plans(int, text) to authenticated;
+grant execute on function api.list_campaigns(uuid, int, text) to authenticated;
+grant execute on function api.get_organization_members(uuid, int, text) to authenticated;
+
+-- Simplify paginated RPCs: return flat arrays instead of { items, next_cursor }.
+-- Client derives hasMore (items.length === limit) and cursor (last item's id)
+-- via usePaginatedList with cursorField: 'id'.
+-- ULID is time-sortable — order by id desc gives "newest first" naturally.
+
+-- -----------------------------------------------------------------------------
+-- list_all_organizations: return flat array
+-- -----------------------------------------------------------------------------
+create or replace function api.list_all_organizations(
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select id, name, slug, status,
+      case when status = 'suspended' then suspension_note end as suspension_note,
+      created_at
+    from app.organizations
+    where (p_cursor IS NULL OR id < p_cursor)
+    order by id desc
+    limit v_limit
+  ) t;
+
+  return v_rows;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- list_plans: return flat array
+-- -----------------------------------------------------------------------------
+create or replace function api.list_plans(
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select sp.id, sp.code, sp.name, sp.description,
+      sp.price_minor, sp.currency, sp.billing_interval, sp.is_active,
+      coalesce((
+        select jsonb_agg(f.code order by f.code)
+        from app.plan_features pf join app.features f on f.id = pf.feature_id
+        where pf.plan_id = sp.id
+      ), '[]'::jsonb) as features
+    from app.subscription_plans sp
+    where (p_cursor IS NULL OR sp.id < p_cursor)
+    order by sp.id desc
+    limit v_limit
+  ) t;
+
+  return v_rows;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- list_campaigns: return flat array
+-- -----------------------------------------------------------------------------
+create or replace function api.list_campaigns(
+  p_org_id text default null,
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id::text from app.profiles pr where pr.id = auth.uid()));
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+begin
+  if not security.can_perform('fundraising.view', v_org_id) then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select to_jsonb(c.*) as data
+    from app.fundraising_campaigns c
+    where c.organization_id = v_org_id
+      and (p_cursor IS NULL OR c.id < p_cursor)
+    order by c.id desc
+    limit v_limit
+  ) t;
+
+  -- Unwrap the nested data field
+  select coalesce(jsonb_agg(item -> 'data'), '[]'::jsonb) into v_rows
+  from jsonb_array_elements(v_rows) as item;
+
+  return v_rows;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- get_organization_members: return flat array
+-- -----------------------------------------------------------------------------
+create or replace function api.get_organization_members(
+  p_org_id text default null,
+  p_limit int default 20,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id::text from app.profiles pr where pr.id = auth.uid()));
+  v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
+  v_rows jsonb;
+begin
+  if not security.is_org_member(v_org_id) then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select jsonb_build_object(
+      'user_id', om.user_id::text,
+      'email', u.email,
+      'display_name', p.display_name,
+      'role', om.role,
+      'permissions', coalesce((
+        select jsonb_agg(pm.code order by pm.code)
+        from app.organization_member_permissions omp
+        join app.permissions pm on pm.id = omp.permission_id
+        where omp.organization_id = om.organization_id
+          and omp.user_id = om.user_id
+      ), '[]'::jsonb)
+    ) as data
+    from app.organization_members om
+    join auth.users u on u.id = om.user_id
+    left join app.profiles p on p.id = om.user_id
+    where om.organization_id = v_org_id
+      and (p_cursor IS NULL OR om.user_id::text < p_cursor)
+    order by om.user_id::text desc
+    limit v_limit
+  ) t;
+
+  -- Unwrap the nested data field
+  select coalesce(jsonb_agg(item -> 'data'), '[]'::jsonb) into v_rows
+  from jsonb_array_elements(v_rows) as item;
+
+  return v_rows;
+end;
+$$;
+
+-- Grants
+grant execute on function api.list_all_organizations(int, text) to authenticated;
+grant execute on function api.list_plans(int, text) to authenticated;
+grant execute on function api.list_campaigns(text, int, text) to authenticated;
+grant execute on function api.get_organization_members(text, int, text) to authenticated;
 
 commit;
