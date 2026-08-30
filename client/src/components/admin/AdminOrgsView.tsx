@@ -41,39 +41,50 @@ export function AdminOrgsView({
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">All Organizations</h1>
       {error && <p className="text-red-600">{error}</p>}
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg bg-white shadow">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Name
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Slug
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Status
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {orgs.map((org) => (
+            {orgs.map(org => (
               <tr key={org.id}>
-                <td className="px-4 py-3 whitespace-nowrap">
+                <td className="whitespace-nowrap px-4 py-3">
                   {org.name}
                   {org.suspension_note && (
-                    <span className="block text-xs text-red-500" title={org.suspension_note}>
+                    <span
+                      className="block text-xs text-red-500"
+                      title={org.suspension_note}
+                    >
                       {org.suspension_note}
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">{org.slug}</td>
-                <td className="px-4 py-3 whitespace-nowrap">
+                <td className="whitespace-nowrap px-4 py-3">{org.slug}</td>
+                <td className="whitespace-nowrap px-4 py-3">
                   <StatusBadge status={org.status} />
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap space-x-2">
+                <td className="space-x-2 whitespace-nowrap px-4 py-3">
                   {org.status === 'pending' && (
                     <>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onApprove(org.id)}
-                        className="h-auto p-0 hover:bg-transparent text-green-600 hover:text-green-800 text-sm"
+                        className="h-auto p-0 text-sm text-green-600 hover:bg-transparent hover:text-green-800"
                       >
                         Approve
                       </Button>
@@ -81,7 +92,7 @@ export function AdminOrgsView({
                         variant="ghost"
                         size="sm"
                         onClick={() => onReject(org.id)}
-                        className="h-auto p-0 hover:bg-transparent text-gray-600 hover:text-gray-800 text-sm"
+                        className="h-auto p-0 text-sm text-gray-600 hover:bg-transparent hover:text-gray-800"
                       >
                         Reject
                       </Button>
@@ -92,10 +103,12 @@ export function AdminOrgsView({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const note = window.prompt('Suspension note (required):')
+                        const note = window.prompt(
+                          'Suspension note (required):'
+                        )
                         if (note) void onSuspend(org.id, note)
                       }}
-                      className="h-auto p-0 hover:bg-transparent text-red-600 hover:text-red-800 text-sm"
+                      className="h-auto p-0 text-sm text-red-600 hover:bg-transparent hover:text-red-800"
                     >
                       Suspend
                     </Button>
@@ -105,7 +118,7 @@ export function AdminOrgsView({
                       variant="ghost"
                       size="sm"
                       onClick={() => onUnsuspend(org.id)}
-                      className="h-auto p-0 hover:bg-transparent text-green-600 hover:text-green-800 text-sm"
+                      className="h-auto p-0 text-sm text-green-600 hover:bg-transparent hover:text-green-800"
                     >
                       Unsuspend
                     </Button>
@@ -115,7 +128,7 @@ export function AdminOrgsView({
             ))}
             {hasMore && (
               <tr>
-                <td colSpan={4} className="text-center py-4">
+                <td colSpan={4} className="py-4 text-center">
                   <Button
                     variant="ghost"
                     size="sm"

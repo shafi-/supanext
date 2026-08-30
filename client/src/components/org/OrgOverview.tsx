@@ -5,14 +5,22 @@ interface OrgOverviewProps {
 }
 
 export function OrgOverview({ status }: OrgOverviewProps) {
-  if (!status) return <div className="text-gray-500 text-sm">Loading status…</div>
+  if (!status)
+    return <div className="text-sm text-gray-500">Loading status…</div>
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow space-y-2 max-w-xl">
-      <p><span className="text-gray-500 text-sm">Name:</span> {status.name}</p>
-      <p><span className="text-gray-500 text-sm">Status:</span> {status.status}</p>
+    <div className="max-w-xl space-y-2 rounded-lg bg-white p-6 shadow">
+      <p>
+        <span className="text-sm text-gray-500">Name:</span> {status.name}
+      </p>
+      <p>
+        <span className="text-sm text-gray-500">Status:</span> {status.status}
+      </p>
       {status.suspension_note && (
-        <p><span className="text-gray-500 text-sm">Note:</span> {status.suspension_note}</p>
+        <p>
+          <span className="text-sm text-gray-500">Note:</span>{' '}
+          {status.suspension_note}
+        </p>
       )}
     </div>
   )

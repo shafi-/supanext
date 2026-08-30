@@ -18,7 +18,10 @@ interface MembersTabContainerProps {
   isAdmin: boolean
 }
 
-export function MembersTabContainer({ orgId, isAdmin }: MembersTabContainerProps) {
+export function MembersTabContainer({
+  orgId,
+  isAdmin,
+}: MembersTabContainerProps) {
   const {
     items: members,
     loading,
@@ -28,12 +31,19 @@ export function MembersTabContainer({ orgId, isAdmin }: MembersTabContainerProps
     loadMore,
     refresh,
   } = usePaginatedList<MemberRow>({
-    fetcher: useCallback((params) => memberService.getMembers(orgId, params), [orgId]),
+    fetcher: useCallback(
+      params => memberService.getMembers(orgId, params),
+      [orgId]
+    ),
     cursorField: 'user_id',
   })
 
   const handleRoleChange = async (userId: string, role: string) => {
-    const { error: err } = await memberService.changeMemberRole(userId, role as 'admin' | 'member', orgId)
+    const { error: err } = await memberService.changeMemberRole(
+      userId,
+      role as 'admin' | 'member',
+      orgId
+    )
     if (err) return
     await refresh()
   }
@@ -44,8 +54,17 @@ export function MembersTabContainer({ orgId, isAdmin }: MembersTabContainerProps
     await refresh()
   }
 
-  const handlePermission = async (userId: string, permission: string, granted: boolean) => {
-    const { error: err } = await memberService.setMemberPermission(userId, permission, granted, orgId)
+  const handlePermission = async (
+    userId: string,
+    permission: string,
+    granted: boolean
+  ) => {
+    const { error: err } = await memberService.setMemberPermission(
+      userId,
+      permission,
+      granted,
+      orgId
+    )
     if (err) return
     await refresh()
   }

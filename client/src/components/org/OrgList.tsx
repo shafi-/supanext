@@ -16,13 +16,13 @@ export function OrgList({ organizations, loading }: OrgListProps) {
         <div>Loading...</div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {organizations.map((org) => (
+          {organizations.map(org => (
             <Link key={org.id} href={`/orgs?id=${org.id}`}>
               <OrgCard org={org} />
             </Link>
           ))}
           {organizations.length === 0 && (
-            <p className="text-gray-500 col-span-full">No organizations yet.</p>
+            <p className="col-span-full text-gray-500">No organizations yet.</p>
           )}
         </div>
       )}

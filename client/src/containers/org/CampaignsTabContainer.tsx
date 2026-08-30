@@ -20,10 +20,17 @@ export function CampaignsTabContainer({ orgId }: CampaignsTabContainerProps) {
     loadMore,
     refresh,
   } = usePaginatedList({
-    fetcher: useCallback((params) => campaignService.listCampaigns(orgId, params), [orgId]),
+    fetcher: useCallback(
+      params => campaignService.listCampaigns(orgId, params),
+      [orgId]
+    ),
   })
 
-  const handleCreate = async (input: { name: string; description: string; goal: string }) => {
+  const handleCreate = async (input: {
+    name: string
+    description: string
+    goal: string
+  }) => {
     if (!input.name.trim()) return
     setSaving(true)
     const { error: err } = await campaignService.createCampaign({

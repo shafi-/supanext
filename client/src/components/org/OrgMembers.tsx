@@ -42,17 +42,19 @@ export function OrgMembers({
     <div className="space-y-4">
       {error && <p className="text-red-600">{error}</p>}
       <ul className="space-y-2">
-        {members.map((m) => (
-          <li key={m.user_id} className="bg-white p-4 rounded-lg shadow">
+        {members.map(m => (
+          <li key={m.user_id} className="rounded-lg bg-white p-4 shadow">
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <p className="font-medium">{m.display_name ?? m.email}</p>
                 <p className="text-sm text-gray-500">{m.email}</p>
               </div>
               {isAdmin ? (
-                <select value={m.role}
-                  onChange={(e) => onRoleChange(m.user_id, e.target.value)}
-                  className="border rounded px-2 py-1 text-sm">
+                <select
+                  value={m.role}
+                  onChange={e => onRoleChange(m.user_id, e.target.value)}
+                  className="rounded border px-2 py-1 text-sm"
+                >
                   <option value="admin">Admin</option>
                   <option value="member">Member</option>
                 </select>
@@ -60,17 +62,28 @@ export function OrgMembers({
                 <span className="text-sm text-gray-500">{m.role}</span>
               )}
               {isAdmin && m.role !== 'admin' && (
-                <button onClick={() => onRemove(m.user_id)}
-                  className="text-red-600 hover:text-red-800 text-sm">Remove</button>
+                <button
+                  onClick={() => onRemove(m.user_id)}
+                  className="text-sm text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
               )}
             </div>
             {isAdmin && m.role === 'member' && (
-              <div className="mt-3 flex flex-wrap gap-3 pl-4 border-t pt-3">
-                {grantablePermissions.map((perm) => (
-                  <label key={perm} className="inline-flex items-center gap-1.5 text-sm">
-                    <input type="checkbox"
+              <div className="mt-3 flex flex-wrap gap-3 border-t pl-4 pt-3">
+                {grantablePermissions.map(perm => (
+                  <label
+                    key={perm}
+                    className="inline-flex items-center gap-1.5 text-sm"
+                  >
+                    <input
+                      type="checkbox"
                       checked={m.permissions.includes(perm)}
-                      onChange={(e) => onPermission(m.user_id, perm, e.target.checked)} />
+                      onChange={e =>
+                        onPermission(m.user_id, perm, e.target.checked)
+                      }
+                    />
                     {perm.replace('fundraising.', '')}
                   </label>
                 ))}
@@ -79,7 +92,7 @@ export function OrgMembers({
           </li>
         ))}
         {hasMore && (
-          <li className="text-center py-4">
+          <li className="py-4 text-center">
             <Button
               variant="ghost"
               size="sm"
@@ -91,7 +104,9 @@ export function OrgMembers({
             </Button>
           </li>
         )}
-        {members.length === 0 && <p className="text-gray-500">No members yet.</p>}
+        {members.length === 0 && (
+          <p className="text-gray-500">No members yet.</p>
+        )}
       </ul>
     </div>
   )

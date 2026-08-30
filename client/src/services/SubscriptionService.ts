@@ -17,8 +17,12 @@ export interface CurrentSubscription {
 
 /** Read-only for members. Assignment/deactivation lives in AdminService (system-admin only). */
 export class SubscriptionService extends BaseRepository {
-  async getCurrentSubscription(orgId?: string): ServiceData<CurrentSubscription> {
-    return this.callRpc<CurrentSubscription>(Rpc.Subscription.GetCurrent, { p_org_id: orgId })
+  async getCurrentSubscription(
+    orgId?: string
+  ): ServiceData<CurrentSubscription> {
+    return this.callRpc<CurrentSubscription>(Rpc.Subscription.GetCurrent, {
+      p_org_id: orgId,
+    })
   }
 }
 

@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { organizationService, type OrgStats } from '@/services/OrganizationService'
+import {
+  organizationService,
+  type OrgStats,
+} from '@/services/OrganizationService'
 
 export function useOrgStats(orgId?: string) {
   const [stats, setStats] = useState<OrgStats | null>(null)

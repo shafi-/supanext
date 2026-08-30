@@ -28,7 +28,7 @@ export function OrgsContainer() {
     }
   }, [orgId])
 
-  const selectedOrg = organizations.find((o) => o.id === orgId) ?? null
+  const selectedOrg = organizations.find(o => o.id === orgId) ?? null
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +39,13 @@ export function OrgsContainer() {
       name.trim(),
       slug.trim().toLowerCase()
     )
-    setOrgListState({ ...orgListState, creating: false, name: '', slug: '', error: err || null })
+    setOrgListState({
+      ...orgListState,
+      creating: false,
+      name: '',
+      slug: '',
+      error: err || null,
+    })
     if (!err) {
       await refresh()
     }
@@ -53,8 +59,12 @@ export function OrgsContainer() {
           slug={orgListState.slug}
           creating={orgListState.creating}
           error={orgListState.error}
-          onNameChange={(value) => setOrgListState({ ...orgListState, name: value })}
-          onSlugChange={(value) => setOrgListState({ ...orgListState, slug: value })}
+          onNameChange={value =>
+            setOrgListState({ ...orgListState, name: value })
+          }
+          onSlugChange={value =>
+            setOrgListState({ ...orgListState, slug: value })
+          }
           onSubmit={handleCreate}
         />
         <OrgList organizations={organizations} loading={orgLoading} />
@@ -64,7 +74,12 @@ export function OrgsContainer() {
 
   if (error) return <div className="text-red-600">{error}</div>
   if (!selectedOrg && orgLoading) return <div>Loading...</div>
-  if (!selectedOrg && !orgLoading) return <p className="text-gray-500">You are not a member of this organization.</p>
+  if (!selectedOrg && !orgLoading)
+    return (
+      <p className="text-gray-500">
+        You are not a member of this organization.
+      </p>
+    )
   if (!selectedOrg) return null
 
   return <OrgDetailsContainer org={selectedOrg} />

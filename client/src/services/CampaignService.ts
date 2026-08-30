@@ -9,7 +9,10 @@ export type { Campaign } from '@/types/campaign'
 import type { Campaign } from '@/types/campaign'
 
 export class CampaignService extends BaseRepository {
-  async listCampaigns(orgId?: string, params?: PaginationParams): ServiceData<Campaign[]> {
+  async listCampaigns(
+    orgId?: string,
+    params?: PaginationParams
+  ): ServiceData<Campaign[]> {
     return this.callRpc<Campaign[]>(Rpc.Campaign.List, {
       p_org_id: orgId,
       p_limit: params?.limit ?? 20,
@@ -60,7 +63,9 @@ export class CampaignService extends BaseRepository {
   }
 
   async deleteCampaign(campaignId: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Campaign.Delete, { p_campaign_id: campaignId })
+    return this.callRpc<void>(Rpc.Campaign.Delete, {
+      p_campaign_id: campaignId,
+    })
   }
 }
 

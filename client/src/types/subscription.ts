@@ -33,7 +33,15 @@ export interface SubscriptionHistory {
   id: string
   organization_id: string
   plan_id: string
-  action: 'subscribed' | 'upgraded' | 'downgraded' | 'expired' | 'renewed' | 'canceled' | 'paused' | 'payment'
+  action:
+    | 'subscribed'
+    | 'upgraded'
+    | 'downgraded'
+    | 'expired'
+    | 'renewed'
+    | 'canceled'
+    | 'paused'
+    | 'payment'
   amount: number
   payment_status: 'paid' | 'pending' | 'failed'
   invoice_number: string | null

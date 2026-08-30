@@ -6,7 +6,7 @@ import { ProfileContainer } from '@/containers/profile/ProfileContainer'
 export default function ProfilePage() {
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-2xl">
         <ProfileContainer />
       </div>
     </AppLayout>

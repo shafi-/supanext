@@ -3,12 +3,25 @@ import type { ServiceData } from '@/types'
 import type { PaginationParams } from '@/types/pagination'
 import { Rpc } from '@/types/rpc'
 
-export type AdminOrgRow = { id: string; name: string; slug: string; status: string; suspension_note: string | null; created_at: string }
+export type AdminOrgRow = {
+  id: string
+  name: string
+  slug: string
+  status: string
+  suspension_note: string | null
+  created_at: string
+}
 
 export type AdminPlanRow = {
-  id: string; code: string; name: string; description: string | null;
-  price_minor: number; currency: string; billing_interval: string;
-  is_active: boolean; features: string[]
+  id: string
+  code: string
+  name: string
+  description: string | null
+  price_minor: number
+  currency: string
+  billing_interval: string
+  is_active: boolean
+  features: string[]
 }
 
 export type AuditLogRow = {
@@ -40,7 +53,10 @@ export class AdminService extends BaseRepository {
   }
 
   async suspendOrganization(orgId: string, note: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Org.Suspend, { p_org_id: orgId, p_note: note })
+    return this.callRpc<void>(Rpc.Org.Suspend, {
+      p_org_id: orgId,
+      p_note: note,
+    })
   }
 
   async unsuspendOrganization(orgId: string): ServiceData<void> {
@@ -58,11 +74,15 @@ export class AdminService extends BaseRepository {
 
   /** Resolves a user id from email; null when unknown. Sysadmin-only. */
   async findUserIdByEmail(email: string): ServiceData<string | null> {
-    return this.callRpc<string | null>(Rpc.Admin.FindUserByEmail, { p_email: email })
+    return this.callRpc<string | null>(Rpc.Admin.FindUserByEmail, {
+      p_email: email,
+    })
   }
 
   // -- console listings ---------------------------------------------------------
-  async listAllOrganizations(params?: PaginationParams): ServiceData<AdminOrgRow[]> {
+  async listAllOrganizations(
+    params?: PaginationParams
+  ): ServiceData<AdminOrgRow[]> {
     return this.callRpc<AdminOrgRow[]>(Rpc.Admin.ListAllOrgs, {
       p_limit: params?.limit ?? 20,
       p_cursor: params?.cursor,
@@ -102,7 +122,11 @@ export class AdminService extends BaseRepository {
     })
   }
 
-  async setPlanFeature(planId: string, featureCode: string, enabled: boolean): ServiceData<void> {
+  async setPlanFeature(
+    planId: string,
+    featureCode: string,
+    enabled: boolean
+  ): ServiceData<void> {
     return this.callRpc<void>(Rpc.Plan.SetFeature, {
       p_plan_id: planId,
       p_feature_code: featureCode,

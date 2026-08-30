@@ -58,9 +58,12 @@ export default function AdminSubscriptionsContainer() {
 
   if (!isSystemAdmin) {
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-        <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">
+        <Link
+          href="/"
+          className="mt-4 inline-block text-blue-600 hover:underline"
+        >
           Back to home
         </Link>
       </div>

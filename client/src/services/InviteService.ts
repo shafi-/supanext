@@ -32,7 +32,9 @@ export class InviteService extends BaseRepository {
 
   /** Anonymous-safe: preview before login. Token is the credential. */
   async getInvitationPreview(token: string): ServiceData<InvitationPreview> {
-    return this.callRpc<InvitationPreview>(Rpc.Invite.Preview, { p_token: token })
+    return this.callRpc<InvitationPreview>(Rpc.Invite.Preview, {
+      p_token: token,
+    })
   }
 
   /** Authenticated: email on the invitation must match the logged-in user. */
@@ -41,7 +43,9 @@ export class InviteService extends BaseRepository {
   }
 
   async revokeInvitation(invitationId: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Invite.Revoke, { p_invitation_id: invitationId })
+    return this.callRpc<void>(Rpc.Invite.Revoke, {
+      p_invitation_id: invitationId,
+    })
   }
 }
 

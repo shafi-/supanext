@@ -31,35 +31,49 @@ export function ProfileComponent({
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Profile</h1>
-      <div className="bg-white p-6 rounded-lg shadow space-y-4">
+      <div className="space-y-4 rounded-lg bg-white p-6 shadow">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Email</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Email
+          </label>
           <p className="mt-1 text-gray-900">{email}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700" htmlFor="display-name">Display Name</label>
+          <label
+            className="block text-sm font-medium text-gray-700"
+            htmlFor="display-name"
+          >
+            Display Name
+          </label>
           <Input
             id="display-name"
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
             maxLength={100}
-            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700" htmlFor="avatar-url">Avatar URL</label>
+          <label
+            className="block text-sm font-medium text-gray-700"
+            htmlFor="avatar-url"
+          >
+            Avatar URL
+          </label>
           <Input
             id="avatar-url"
             type="url"
             placeholder="https://…"
             value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            onChange={e => setAvatarUrl(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Active Organization</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Active Organization
+          </label>
           <p className="mt-1 text-gray-900">{orgName ?? 'None'}</p>
         </div>
         <Button
@@ -71,7 +85,7 @@ export function ProfileComponent({
             }
           }}
           disabled={saving}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
         </Button>

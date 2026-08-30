@@ -9,5 +9,7 @@ interface BillingTabContainerProps {
 
 export function BillingTabContainer({ orgId }: BillingTabContainerProps) {
   const { subscription, loading, error } = useSubscription(orgId)
-  return <BillingTab subscription={subscription} loading={loading} error={error} />
+  return (
+    <BillingTab subscription={subscription} loading={loading} error={error} />
+  )
 }

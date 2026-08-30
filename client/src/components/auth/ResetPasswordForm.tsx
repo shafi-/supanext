@@ -42,9 +42,11 @@ export function ResetPasswordForm({
 }: ResetPasswordFormProps) {
   if (sent) {
     return (
-      <div className="text-center space-y-4">
+      <div className="space-y-4 text-center">
         <h1 className="text-2xl font-bold">Check your email</h1>
-        <p className="text-gray-600">We sent a password reset link to {email}</p>
+        <p className="text-gray-600">
+          We sent a password reset link to {email}
+        </p>
         <Link href="/auth/login" className="text-blue-600 hover:underline">
           Back to login
         </Link>
@@ -54,10 +56,15 @@ export function ResetPasswordForm({
 
   if (success) {
     return (
-      <div className="text-center space-y-4">
+      <div className="space-y-4 text-center">
         <h1 className="text-2xl font-bold text-green-600">Password updated</h1>
-        <p className="text-gray-600">Your password has been changed successfully.</p>
-        <Link href="/dashboard" className="bg-blue-600 text-white px-4 py-2 rounded-md inline-block hover:bg-blue-700">
+        <p className="text-gray-600">
+          Your password has been changed successfully.
+        </p>
+        <Link
+          href="/dashboard"
+          className="inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        >
           Go to dashboard
         </Link>
       </div>
@@ -71,34 +78,44 @@ export function ResetPasswordForm({
         <p className="text-gray-600">Choose a new password for your account.</p>
         <form onSubmit={onSetPassword} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700" htmlFor="new-password">New password</label>
+            <label
+              className="block text-sm font-medium text-gray-700"
+              htmlFor="new-password"
+            >
+              New password
+            </label>
             <Input
               id="new-password"
               type="password"
               value={password}
-              onChange={(e) => onPasswordChange(e.target.value)}
+              onChange={e => onPasswordChange(e.target.value)}
               minLength={6}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700" htmlFor="confirm-new-password">Confirm new password</label>
+            <label
+              className="block text-sm font-medium text-gray-700"
+              htmlFor="confirm-new-password"
+            >
+              Confirm new password
+            </label>
             <Input
               id="confirm-new-password"
               type="password"
               value={confirmPassword}
-              onChange={(e) => onConfirmPasswordChange(e.target.value)}
+              onChange={e => onConfirmPasswordChange(e.target.value)}
               minLength={6}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               required
             />
           </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {submitting ? 'Updating...' : 'Update password'}
           </Button>
@@ -112,22 +129,27 @@ export function ResetPasswordForm({
       <h1 className="text-2xl font-bold">Reset Password</h1>
       <form onSubmit={onRequestReset} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700" htmlFor="reset-email">Email</label>
+          <label
+            className="block text-sm font-medium text-gray-700"
+            htmlFor="reset-email"
+          >
+            Email
+          </label>
           <Input
             id="reset-email"
             type="email"
             value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            onChange={e => onEmailChange(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             required
           />
         </div>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
         {captchaEnabled && <Captcha onToken={onCaptchaToken} />}
         <Button
           type="submit"
           disabled={submitting}
-          className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {submitting ? 'Sending...' : 'Send reset link'}
         </Button>

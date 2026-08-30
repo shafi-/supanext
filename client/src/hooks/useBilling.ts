@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { subscriptionService, type CurrentSubscription } from '@/services/SubscriptionService'
+import {
+  subscriptionService,
+  type CurrentSubscription,
+} from '@/services/SubscriptionService'
 
 /**
  * Read-only billing view for members.
@@ -20,7 +23,8 @@ export function useBilling(orgId?: string) {
       return
     }
     setLoading(true)
-    const { data, error: err }= await subscriptionService.getCurrentSubscription(orgId)
+    const { data, error: err } =
+      await subscriptionService.getCurrentSubscription(orgId)
     setBilling(data)
     setError(err)
     setLoading(false)

@@ -22,31 +22,42 @@ export function OrgInvites({
   onInvite,
 }: OrgInvitesProps) {
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="max-w-2xl space-y-4">
       <form onSubmit={onInvite} className="flex gap-2">
-        <input type="email" value={email} onChange={(e) => onChangeEmail(e.target.value)}
-          placeholder="Invite by email…" className="flex-1 border rounded-md px-3 py-2" />
-        <select value={role} onChange={(e) => onChangeRole(e.target.value as 'admin' | 'member')}
-          className="border rounded px-2 py-2">
+        <input
+          type="email"
+          value={email}
+          onChange={e => onChangeEmail(e.target.value)}
+          placeholder="Invite by email…"
+          className="flex-1 rounded-md border px-3 py-2"
+        />
+        <select
+          value={role}
+          onChange={e => onChangeRole(e.target.value as 'admin' | 'member')}
+          className="rounded border px-2 py-2"
+        >
           <option value="member">Member</option>
           <option value="admin">Admin</option>
         </select>
-        <button type="submit" disabled={sending}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={sending}
+          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+        >
           {sending ? 'Inviting…' : 'Invite'}
         </button>
       </form>
       {error && <p className="text-red-600">{error}</p>}
 
       {lastInvite && (
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg space-y-2">
+        <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm font-medium text-blue-900">
             Invitation created for {lastInvite.email}.
           </p>
           <p className="text-xs text-blue-700">
             Deliver this link yourself — the database never sends emails:
           </p>
-          <code className="block bg-white p-2 rounded border text-xs break-all">
+          <code className="block break-all rounded border bg-white p-2 text-xs">
             {typeof window !== 'undefined' &&
               `${window.location.origin}/invite?token=${lastInvite.token}`}
           </code>
@@ -57,7 +68,8 @@ export function OrgInvites({
       )}
 
       <p className="text-sm text-gray-500">
-        Pending invitation tracking is not available yet — store the link when you mint it.
+        Pending invitation tracking is not available yet — store the link when
+        you mint it.
       </p>
     </div>
   )

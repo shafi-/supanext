@@ -51,7 +51,12 @@ export function RegisterContainer() {
 
     try {
       setLoading(true)
-      const { error } = await signUp(email, password, fullName || undefined, captchaToken ?? undefined)
+      const { error } = await signUp(
+        email,
+        password,
+        fullName || undefined,
+        captchaToken ?? undefined
+      )
       if (error) {
         setError(error)
         setCaptchaToken(null)

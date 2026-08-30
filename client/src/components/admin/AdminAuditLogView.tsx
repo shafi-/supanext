@@ -41,7 +41,10 @@ function metadataPreview(row: AuditLogRow): string {
   if (keys.length === 0) return ''
   return keys
     .slice(0, 3)
-    .map((k) => `${k}=${JSON.stringify((row.metadata as Record<string, unknown>)[k])}`)
+    .map(
+      k =>
+        `${k}=${JSON.stringify((row.metadata as Record<string, unknown>)[k])}`
+    )
     .join(', ')
 }
 
@@ -65,53 +68,65 @@ export function AdminAuditLogView({
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {entries.length === 0 ? (
-        <div className="bg-white p-8 rounded-lg shadow text-center text-gray-500">
+        <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow">
           No audit log entries yet.
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-hidden rounded-lg bg-white shadow">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-700">When</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-700">Actor</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-700">Action</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-700">Entity</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-700">Metadata</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  When
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  Actor
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  Action
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  Entity
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-700">
+                  Metadata
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {entries.map((row) => (
+              {entries.map(row => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                  <td className="whitespace-nowrap px-3 py-2 text-gray-600">
                     {formatTime(row.occurred_at)}
                   </td>
                   <td className="px-3 py-2 text-gray-900">
                     <div className="font-medium">{actorLabel(row)}</div>
                     {row.actor_email && row.actor_display_name && (
-                      <div className="text-xs text-gray-500">{row.actor_email}</div>
+                      <div className="text-xs text-gray-500">
+                        {row.actor_email}
+                      </div>
                     )}
                   </td>
                   <td className="px-3 py-2">
-                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
+                    <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
                       {row.action}
                     </code>
                   </td>
-                  <td className="px-3 py-2 text-gray-600 text-xs">
-                    {row.entity_type && (
-                      <div>{row.entity_type}</div>
-                    )}
+                  <td className="px-3 py-2 text-xs text-gray-600">
+                    {row.entity_type && <div>{row.entity_type}</div>}
                     {row.entity_id && (
-                      <div className="font-mono text-gray-400">{row.entity_id}</div>
+                      <div className="font-mono text-gray-400">
+                        {row.entity_id}
+                      </div>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-gray-500 text-xs">
+                  <td className="px-3 py-2 text-xs text-gray-500">
                     {metadataPreview(row)}
                   </td>
                 </tr>
@@ -126,7 +141,7 @@ export function AdminAuditLogView({
           <button
             onClick={onLoadMore}
             disabled={loadingMore}
-            className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
             {loadingMore ? 'Loading…' : 'Load more'}
           </button>

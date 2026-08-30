@@ -12,7 +12,10 @@ export type MemberRow = {
 }
 
 export class MemberService extends BaseRepository {
-  async getMembers(orgId?: string, params?: PaginationParams): ServiceData<MemberRow[]> {
+  async getMembers(
+    orgId?: string,
+    params?: PaginationParams
+  ): ServiceData<MemberRow[]> {
     return this.callRpc<MemberRow[]>(Rpc.Member.GetMany, {
       p_org_id: orgId,
       p_limit: params?.limit ?? 20,
@@ -20,7 +23,11 @@ export class MemberService extends BaseRepository {
     })
   }
 
-  async changeMemberRole(userId: string, role: 'admin' | 'member', orgId?: string): ServiceData<void> {
+  async changeMemberRole(
+    userId: string,
+    role: 'admin' | 'member',
+    orgId?: string
+  ): ServiceData<void> {
     return this.callRpc<void>(Rpc.Member.ChangeRole, {
       p_user_id: userId,
       p_role: role,
@@ -29,7 +36,10 @@ export class MemberService extends BaseRepository {
   }
 
   async removeMember(userId: string, orgId?: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Member.Remove, { p_user_id: userId, p_org_id: orgId })
+    return this.callRpc<void>(Rpc.Member.Remove, {
+      p_user_id: userId,
+      p_org_id: orgId,
+    })
   }
 
   async setMemberPermission(

@@ -35,20 +35,20 @@ export function PublicOrgContainer() {
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b bg-white">
-        <div className="max-w-4xl mx-auto px-4 flex justify-between h-16 items-center">
-          <Link href="/" className="font-bold text-xl text-gray-900">
+        <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
+          <Link href="/" className="text-xl font-bold text-gray-900">
             SupaNext
           </Link>
           <div className="flex items-center space-x-4">
             <Link
               href="/auth/login"
-              className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
             >
               Sign In
             </Link>
             <Link
               href="/auth/register"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
             >
               Create Account
             </Link>
@@ -58,12 +58,17 @@ export function PublicOrgContainer() {
 
       <main>
         {loading ? (
-          <div className="max-w-4xl mx-auto py-12 text-gray-500">Loading...</div>
+          <div className="mx-auto max-w-4xl py-12 text-gray-500">
+            Loading...
+          </div>
         ) : !org ? (
-          <div className="max-w-4xl mx-auto py-12">
-            <h1 className="text-2xl font-bold text-gray-900">Organization Not Found</h1>
+          <div className="mx-auto max-w-4xl py-12">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Organization Not Found
+            </h1>
             <p className="mt-2 text-gray-500">
-              The organization you are looking for does not exist or is not available.
+              The organization you are looking for does not exist or is not
+              available.
             </p>
           </div>
         ) : (

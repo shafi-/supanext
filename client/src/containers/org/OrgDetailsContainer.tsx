@@ -25,7 +25,9 @@ export function OrgDetailsContainer({ org }: OrgDetailsContainerProps) {
   const isActive = currentOrg?.id === org.id
   const isAdmin = org.role === 'admin'
   const hasFundraising =
-    subscription != null && Object.keys(subscription).length > 0 && hasFeature('fundraising')
+    subscription != null &&
+    Object.keys(subscription).length > 0 &&
+    hasFeature('fundraising')
 
   const handleActivate = async () => {
     await switchOrg(org.id)
@@ -44,8 +46,12 @@ export function OrgDetailsContainer({ org }: OrgDetailsContainerProps) {
         onActivate={handleActivate}
       />
       {tab === 'overview' && <OverviewTabContainer orgId={org.id} />}
-      {tab === 'campaigns' && hasFundraising && <CampaignsTabContainer orgId={org.id} />}
-      {tab === 'members' && <MembersTabContainer orgId={org.id} isAdmin={isAdmin} />}
+      {tab === 'campaigns' && hasFundraising && (
+        <CampaignsTabContainer orgId={org.id} />
+      )}
+      {tab === 'members' && (
+        <MembersTabContainer orgId={org.id} isAdmin={isAdmin} />
+      )}
       {tab === 'invites' && isAdmin && <InvitesTabContainer orgId={org.id} />}
       {tab === 'billing' && <BillingTabContainer orgId={org.id} />}
     </>

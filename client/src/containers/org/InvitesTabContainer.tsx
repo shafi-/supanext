@@ -11,7 +11,9 @@ interface InvitesTabContainerProps {
 export function InvitesTabContainer({ orgId }: InvitesTabContainerProps) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'admin' | 'member'>('member')
-  const [lastInvite, setLastInvite] = useState<(InvitationPayload & { email: string }) | null>(null)
+  const [lastInvite, setLastInvite] = useState<
+    (InvitationPayload & { email: string }) | null
+  >(null)
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
@@ -21,7 +23,11 @@ export function InvitesTabContainer({ orgId }: InvitesTabContainerProps) {
     if (!val) return
     setSending(true)
     setError(null)
-    const { data, error: err } = await inviteService.inviteMember(val, role, orgId)
+    const { data, error: err } = await inviteService.inviteMember(
+      val,
+      role,
+      orgId
+    )
     setSending(false)
     if (err || !data) {
       setError(err ?? 'Failed to create invitation')

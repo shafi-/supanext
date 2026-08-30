@@ -8,7 +8,8 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'SupaNext - NextJS + Supabase Starter',
-  description: 'A production-ready NextJS + Supabase starter template with function-first database architecture',
+  description:
+    'A production-ready NextJS + Supabase starter template with function-first database architecture',
 }
 
 export default function RootLayout({
@@ -20,9 +21,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <OrganizationProvider>
-            {children}
-          </OrganizationProvider>
+          <OrganizationProvider>{children}</OrganizationProvider>
         </AuthProvider>
       </body>
     </html>

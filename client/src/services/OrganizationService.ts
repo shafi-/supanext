@@ -34,12 +34,16 @@ export class OrganizationService extends BaseRepository {
     return this.callRpc<SessionContext>(Rpc.Session.GetContext)
   }
 
-  async setActiveOrganization(orgId: string): ServiceData<{ active_organization_id: string }> {
+  async setActiveOrganization(
+    orgId: string
+  ): ServiceData<{ active_organization_id: string }> {
     return this.callRpc(Rpc.Session.SetActiveOrg, { p_org_id: orgId })
   }
 
   async getOrganizationStatus(orgId?: string): ServiceData<OrganizationStatus> {
-    return this.callRpc<OrganizationStatus>(Rpc.Org.GetStatus, { p_org_id: orgId })
+    return this.callRpc<OrganizationStatus>(Rpc.Org.GetStatus, {
+      p_org_id: orgId,
+    })
   }
 
   async getOrgStats(orgId: string): ServiceData<OrgStats> {
@@ -48,12 +52,16 @@ export class OrganizationService extends BaseRepository {
 
   /** Anonymous-safe public directory (active + suspended orgs). */
   async listPublicOrganizations(limit = 50): ServiceData<PublicOrganization[]> {
-    return this.callRpc<PublicOrganization[]>(Rpc.Org.ListPublic, { p_limit: limit })
+    return this.callRpc<PublicOrganization[]>(Rpc.Org.ListPublic, {
+      p_limit: limit,
+    })
   }
 
   /** Anonymous public org profile by id (uuid) or slug. */
   async getOrgPublic(identifier: string): ServiceData<PublicOrgProfile | null> {
-    return this.callRpc<PublicOrgProfile | null>(Rpc.Org.GetPublic, { p_org_id: identifier })
+    return this.callRpc<PublicOrgProfile | null>(Rpc.Org.GetPublic, {
+      p_org_id: identifier,
+    })
   }
 }
 

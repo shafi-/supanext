@@ -8,7 +8,10 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { organizationService, type SessionOrganization } from '@/services/OrganizationService'
+import {
+  organizationService,
+  type SessionOrganization,
+} from '@/services/OrganizationService'
 
 interface OrganizationContextType {
   displayName: string | null
@@ -27,9 +30,15 @@ interface OrganizationContextType {
   refresh: () => Promise<void>
 }
 
-const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined)
+const OrganizationContext = createContext<OrganizationContextType | undefined>(
+  undefined
+)
 
-export function OrganizationProvider({ children }: { children: React.ReactNode }) {
+export function OrganizationProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<SessionOrganization[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -55,21 +64,19 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     void refresh()
   }, [refresh])
 
-  const switchOrg = useCallback(
-    async (orgId: string) => {
-      setError(null)
-      const { error: err } = await organizationService.setActiveOrganization(orgId)
-      if (err) {
-        setError(err)
-        return
-      }
-      setActiveId(orgId)
-    },
-    []
-  )
+  const switchOrg = useCallback(async (orgId: string) => {
+    setError(null)
+    const { error: err } =
+      await organizationService.setActiveOrganization(orgId)
+    if (err) {
+      setError(err)
+      return
+    }
+    setActiveId(orgId)
+  }, [])
 
   const currentOrg = useMemo(
-    () => organizations.find((o) => o.id === activeId) ?? null,
+    () => organizations.find(o => o.id === activeId) ?? null,
     [organizations, activeId]
   )
 
@@ -80,7 +87,18 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   return (
     <OrganizationContext.Provider
-      value={{ displayName, organizations, currentOrg, membership, isSystemAdmin, adminLoading: loading, loading, error, switchOrg, refresh }}
+      value={{
+        displayName,
+        organizations,
+        currentOrg,
+        membership,
+        isSystemAdmin,
+        adminLoading: loading,
+        loading,
+        error,
+        switchOrg,
+        refresh,
+      }}
     >
       {children}
     </OrganizationContext.Provider>
@@ -90,7 +108,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 export function useOrganization() {
   const context = useContext(OrganizationContext)
   if (!context) {
-    throw new Error('useOrganization must be used within an OrganizationProvider')
+    throw new Error(
+      'useOrganization must be used within an OrganizationProvider'
+    )
   }
   return context
 }

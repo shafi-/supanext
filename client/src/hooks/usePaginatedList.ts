@@ -5,7 +5,9 @@ import type { PaginationCursor, PaginationParams } from '@/types/pagination'
 
 interface UsePaginatedListOptions<T> {
   /** Service method that returns a flat array of items */
-  fetcher: (params: PaginationParams) => Promise<{ data: T[] | null; error: string | null }>
+  fetcher: (
+    params: PaginationParams
+  ) => Promise<{ data: T[] | null; error: string | null }>
   /** Items per page (default: 20) */
   limit?: number
   /** Set to false to prevent auto-load on mount (default: true) */
@@ -55,7 +57,11 @@ export function usePaginatedList<T>({
 
       setItems(prev => (append ? [...prev, ...data] : data))
       setHasMore(data.length === limit)
-      setCursor(data.length > 0 ? (data[data.length - 1][cursorField] as unknown as PaginationCursor) : null)
+      setCursor(
+        data.length > 0
+          ? (data[data.length - 1][cursorField] as unknown as PaginationCursor)
+          : null
+      )
       setError(null)
     },
     [fetcher, limit, cursorField]
@@ -89,5 +95,14 @@ export function usePaginatedList<T>({
     setLoading(false)
   }, [reset, fetchPage])
 
-  return { items, loading, loadingMore, error, hasMore, loadMore, reset, refresh }
+  return {
+    items,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    reset,
+    refresh,
+  }
 }
