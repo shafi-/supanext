@@ -14,11 +14,13 @@
  * SET LOCAL ROLE authenticated and SET LOCAL request.jwt.claim.sub to a
  * specific user UUID. This exercises RLS the way PostgREST does.
  *
- * Branch-aware: org-table scenarios (organizations, organization_members,
- * organization_invitations, fundraising_campaigns RLS gated by org member)
- * only run on main. User-centric branch has already dropped those tables.
+ * Branch-aware: org-table scenarios only run on main (which has
+ * `app.organizations`). The user-centric branch drops those tables. Each
+ * test that depends on a table calls requireTable() which uses the test
+ * context to skip cleanly if the table is missing.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import type { TaskContext } from 'vitest'
 import { Client } from 'pg'
 
 const DB_URL = process.env.SUPABASE_DB_URL
@@ -28,20 +30,21 @@ const OWNER = '00000000-0000-0000-0000-000000000001'
 const MEMBER = '00000000-0000-0000-0000-000000000002'
 const OUTSIDER = '00000000-0000-0000-0000-000000000003'
 const SYS_ADMIN = '00000000-0000-0000-0000-000000000004'
-const ORG_ID = '01J0000000000000000000000A' // ULID-shaped (10-char time + 16 random)
+const ORG_ID = '01J0000000000000000000000A'
 const ORG_B_ID = '01J0000000000000000000000B'
 
 let admin: Client
 
-async function asUser(userId: string | null, fn: (q: (sql: string, params?: unknown[]) => Promise<unknown[]>) => Promise<void>) {
-  // We use a dedicated client per scenario so SET LOCAL doesn't leak.
+async function asUser(
+  userId: string | null,
+  fn: (q: (sql: string, params?: unknown[]) => Promise<unknown[]>) => Promise<void>
+) {
   const c = new Client({ connectionString: DB_URL })
   await c.connect()
   try {
     await c.query('begin')
-    await c.query("set local role authenticated")
+    await c.query('set local role authenticated')
     if (userId) {
-      // PostgREST sets these; both must be present for RLS helpers to work.
       await c.query("select set_config('request.jwt.claim.sub', $1, true)", [userId])
       await c.query("select set_config('request.jwt.claims', $1, true)", [
         JSON.stringify({ sub: userId, role: 'authenticated' }),
@@ -58,20 +61,29 @@ async function asUser(userId: string | null, fn: (q: (sql: string, params?: unkn
   }
 }
 
-let HAS_ORGS = false
+async function hasTable(name: string): Promise<boolean> {
+  if (!admin) return false
+  const r = await admin.query(
+    `select exists (select 1 from information_schema.tables where table_schema = 'app' and table_name = $1) as x`,
+    [name]
+  )
+  return (r.rows[0] as { x: boolean }).x
+}
+
+// Returns true if the table exists; otherwise marks the test skipped via
+// the vitest context and returns false. Callers should early-return.
+async function requireTable(name: string, ctx: TaskContext): Promise<boolean> {
+  if (await hasTable(name)) return true
+  ctx.skip()
+  return false
+}
 
 beforeAll(async () => {
   if (skip) return
   admin = new Client({ connectionString: DB_URL })
   await admin.connect()
 
-  // Detect which schema we're in. user-centric has no `app.organizations`.
-  const r = await admin.query(
-    `select exists (select 1 from information_schema.tables where table_schema = 'app' and table_name = 'organizations') as has_orgs`
-  )
-  HAS_ORGS = (r.rows[0] as { has_orgs: boolean }).has_orgs
-
-  // Idempotent seed (works against an already-seeded DB).
+  // Idempotent base seed.
   await admin.query(`
     begin;
 
@@ -89,7 +101,8 @@ beforeAll(async () => {
     on conflict (user_id) do nothing;
   `)
 
-  if (HAS_ORGS) {
+  if (await hasTable('organizations')) {
+    // main: org-scoped test data.
     await admin.query(`
       insert into app.organizations (id, name, slug, status, created_by) values
         ('${ORG_ID}',   'Acme',   'acme',   'active', '${OWNER}'),
@@ -108,7 +121,7 @@ beforeAll(async () => {
       on conflict (id) do nothing;
     `)
   } else {
-    // user-centric: campaigns are user-owned
+    // user-centric: user-owned campaigns (organization_id column is gone).
     await admin.query(`
       insert into app.fundraising_campaigns (id, name, user_id, created_by) values
         ('01JCMPAAAAAAAAAAAAAAAAAAAA01', 'Owner campaign', '${OWNER}', '${OWNER}'),
@@ -168,29 +181,33 @@ describe.skipIf(skip)('RLS: app.profiles self-access', () => {
 // =============================================================================
 // Main-branch only: org-gated RLS.
 // =============================================================================
-describe.skipIf(skip || !HAS_ORGS)('RLS (main only): app.organizations', () => {
-  it('members of an org can read their own org', async () => {
+describe.skipIf(skip)('RLS (main only): app.organizations', () => {
+  it('members of an org can read their own org', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(MEMBER, async (q) => {
       const rows = await q(`select id from app.organizations where id = $1`, [ORG_ID])
       expect(rows).toHaveLength(1)
     })
   })
 
-  it('members cannot read other orgs', async () => {
+  it('members cannot read other orgs', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(MEMBER, async (q) => {
       const rows = await q(`select id from app.organizations where id = $1`, [ORG_B_ID])
       expect(rows).toHaveLength(0)
     })
   })
 
-  it('system admins can read all orgs', async () => {
+  it('system admins can read all orgs', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(SYS_ADMIN, async (q) => {
       const rows = (await q(`select id from app.organizations order by id`)) as { id: string }[]
       expect(rows.length).toBeGreaterThanOrEqual(2)
     })
   })
 
-  it('outsider cannot read any org other than their own', async () => {
+  it('outsider cannot read any org other than their own', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(OUTSIDER, async (q) => {
       const rows = (await q(`select id from app.organizations`)) as { id: string }[]
       expect(rows).toHaveLength(1)
@@ -199,25 +216,31 @@ describe.skipIf(skip || !HAS_ORGS)('RLS (main only): app.organizations', () => {
   })
 })
 
-describe.skipIf(skip || !HAS_ORGS)('RLS (main only): app.fundraising_campaigns (org-scoped)', () => {
-  it('owner can read campaigns in their org', async () => {
+describe.skipIf(skip)('RLS (main only): app.fundraising_campaigns (org-scoped)', () => {
+  it('owner can read campaigns in their org', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(OWNER, async (q) => {
       const rows = await q(`select id from app.fundraising_campaigns where organization_id = $1`, [ORG_ID])
       expect(rows).toHaveLength(1)
     })
   })
 
-  it('member of Org A cannot read Org B campaigns', async () => {
+  it('member of Org A cannot read Org B campaigns', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(MEMBER, async (q) => {
       const rows = await q(`select id from app.fundraising_campaigns where organization_id = $1`, [ORG_B_ID])
       expect(rows).toHaveLength(0)
     })
   })
 
-  it('member cannot insert into a campaign in an org they do not belong to', async () => {
+  it('member cannot insert into a campaign in an org they do not belong to', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(MEMBER, async (q) => {
       await expect(
-        q(`insert into app.fundraising_campaigns (id, organization_id, name, created_by) values ('01JCMPTEST00000000000XX', $1, 'X', $2)`, [ORG_B_ID, MEMBER])
+        q(
+          `insert into app.fundraising_campaigns (id, organization_id, name, created_by) values ('01JCMPTEST00000000000XX', $1, 'X', $2)`,
+          [ORG_B_ID, MEMBER]
+        )
       ).rejects.toThrow()
     })
   })
@@ -226,18 +249,28 @@ describe.skipIf(skip || !HAS_ORGS)('RLS (main only): app.fundraising_campaigns (
 // =============================================================================
 // user-centric-branch only: owner-scoped campaigns.
 // =============================================================================
-describe.skipIf(skip || HAS_ORGS)('RLS (user-centric only): app.fundraising_campaigns (user-owned)', () => {
-  it('owner can read their own campaign', async () => {
+describe.skipIf(skip)('RLS (user-centric only): app.fundraising_campaigns (user-owned)', () => {
+  it('owner can read their own campaign', async (ctx) => {
+    if (await hasTable('organizations')) {
+      ctx.skip()
+      return
+    }
     await asUser(OWNER, async (q) => {
       const rows = await q(`select id from app.fundraising_campaigns where created_by = $1`, [OWNER])
       expect(rows.length).toBeGreaterThanOrEqual(1)
     })
   })
 
-  it('outsider cannot read other users campaigns', async () => {
+  it('outsider cannot read other users campaigns', async (ctx) => {
+    if (await hasTable('organizations')) {
+      ctx.skip()
+      return
+    }
     await asUser(OUTSIDER, async (q) => {
-      // OUTSIDER should only see their own.
-      const rows = (await q(`select id, created_by from app.fundraising_campaigns`)) as { id: string; created_by: string }[]
+      const rows = (await q(`select id, created_by from app.fundraising_campaigns`)) as {
+        id: string
+        created_by: string
+      }[]
       rows.forEach((r) => expect(r.created_by).toBe(OUTSIDER))
     })
   })
@@ -246,8 +279,9 @@ describe.skipIf(skip || HAS_ORGS)('RLS (user-centric only): app.fundraising_camp
 // =============================================================================
 // Both: anon role sees nothing.
 // =============================================================================
-describe.skipIf(skip || !HAS_ORGS)('RLS: anon role', () => {
-  it('anonymous cannot read any app table directly', async () => {
+describe.skipIf(skip)('RLS: anon role', () => {
+  it('anonymous cannot read any app table directly', async (ctx) => {
+    if (!(await requireTable('organizations', ctx))) return
     await asUser(null, async (q) => {
       const rows = await q(`select id from app.organizations`)
       expect(rows).toHaveLength(0)
