@@ -6,15 +6,18 @@ Accurate snapshot of this template's current state.
 - Function-first schema in `api.*` namespace: profiles, organizations,
   organization_members, organization_invitations, plans, plan_features,
   subscriptions, fundraising_campaigns, audit_log, system_admins, permissions
-- Deny-all RLS + `security.*` authorization kernel (has_role_in_active_org,
-  can_perform, token_digest). Explicit GRANT surface at end of
-  `20240825000000_initial_migration.sql` (single source of truth)
-- Status ENUMs: `app.org_status`, `app.invitation_status`,
-  `app.subscription_status` (`20240828000000_status_enums.sql`)
-- Structured invite error codes: INV01/INV02/INV03 in
-  `20240827000000_structured_invite_errors.sql`
+- Deny-all RLS + `security.*` authorization kernel (`has_role_in_active_org`,
+  `can_perform`, `token_digest`). Explicit GRANT surface at end of
+  `00000000000001_baseline.sql` (single source of truth)
+- Status ENUMs live in `app.*` (`app.org_status`, `app.invitation_status`,
+  `app.subscription_status`) — defined in the same baseline migration
+- Structured invite error codes (INV01/INV02/INV03) encoded in the baseline
+  via the `security.consume_invite_token` raises
 - pgTAP test suites in `supabase/tests/database/` (run via psql after
   `supabase db reset`; pgtap extension installed by migrations)
+- Migration history is intentionally squashed into a single baseline file.
+  Branch `chore/squash-migrations` originally collapsed the multi-file
+  history; subsequent changes land by amending that baseline
 
 ## Client (client/)
 - NextJS 14 App Router, static export (`output: 'export'`, no dynamic routes)
@@ -22,18 +25,26 @@ Accurate snapshot of this template's current state.
   request-reset/update-password; recovery-link flow completes on
   `/auth/reset-password`
 - Login/register honor `?next=` redirect (open-redirect safe)
-- Layers: pages → services → repositories → supabase manager. Container
-  extraction pending (architecture contract says containers own service calls)
-- Types: `types/` directory holds shared type definitions (organization,
+- Layering contract (Page → Container → Component) is enforced; the full
+  contract, directory layout, and `AppLayout`/`Nav` session exception are
+  maintained in `AGENTS.md` and `docs/architecture.md`. Pages are thin
+  wrappers over feature containers in `client/src/containers/<feature>/`
+- Types: `client/src/types/` holds shared type definitions (organization,
   campaign, profile, status enums, permissions, API contracts, RPC names,
-  database types). Services re-export for backward compatibility
-- Org context + permission hooks: `useOrganization` (also provides
-  `isSystemAdmin`), `usePermissions`, `useRequiredParam` + `isUuid`/`isInviteToken`
+  pagination, database types). Services re-export for backward compatibility
+- Session + permission hooks: `useSessionContext` (exposes `isSystemAdmin`),
+  `usePermissions`, `useSystemAdmin` (thin re-export of
+  `useSessionContext` — single `get_session_context` RPC per mount),
+  `useSubscription`, `useProfile`, `useBilling`, `usePaginatedList`,
+  `useQueryParam` (provides `useRequiredParam` + `isUuid`/`isInviteToken`)
 - API contract tests validate every RPC function name + parameter mapping
-  between frontend services and database.ts
-- Pages: landing, dashboard, orgs (+public org page), invite acceptance,
-  admin (stats/orgs/plans/subscriptions), profile, billing tab
-- Tests: Vitest unit + contract tests, Playwright E2E in `client/tests/e2e/`
+  between frontend services and `types/database.ts`
+- Pages: landing, dashboard, invite acceptance, profile, admin (users,
+  plans, subscriptions, audit log), auth (login/register/reset-password),
+  about, privacy
+- Tests: Vitest unit + contract tests (`client/tests/unit/`), RLS
+  integration tests (`client/tests/integration/`), Playwright E2E
+  (`client/tests/e2e/`)
 
 ## Scaffolding (intentionally empty)
 - `backend/` — shared edge-function business logic
@@ -53,11 +64,7 @@ they exist only after manual apply to the local DB (`scripts/bootstrap-admin.sh`
 does this automatically and refuses non-local targets).
 
 ## Known Gaps / Next Up
-- Extract containers layer from pages (architecture contract says containers
-  own service calls; pages currently violate this)
-- `useSystemAdmin` independent RPC eliminated — now consumes from
-  `OrganizationProvider` (single `get_session_context` call per mount)
-- Pagination for list RPCs (`get_organization_members`, etc.)
+- Pagination cursor support still missing for member/invite list RPCs
 - Billing is MANUAL MODE by design: admin invoices offline. To charge real
   money later, replace client-callable subscribe RPCs with PSP webhook
   writes via an edge function
