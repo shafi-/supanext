@@ -1,6 +1,7 @@
 -- Simplify paginated RPCs: return flat arrays instead of { items, next_cursor }.
 -- Client derives hasMore (items.length === limit) and cursor (last item's id)
 -- via usePaginatedList with cursorField: 'id'.
+-- ULID is time-sortable — order by id desc gives "newest first" naturally.
 
 -- -----------------------------------------------------------------------------
 -- list_all_organizations: return flat array
@@ -29,8 +30,8 @@ begin
       case when status = 'suspended' then suspension_note end as suspension_note,
       created_at
     from app.organizations
-    where (p_cursor IS NULL OR id::text > p_cursor)
-    order by id asc
+    where (p_cursor IS NULL OR id < p_cursor)
+    order by id desc
     limit v_limit
   ) t;
 
@@ -69,8 +70,8 @@ begin
         where pf.plan_id = sp.id
       ), '[]'::jsonb) as features
     from app.subscription_plans sp
-    where (p_cursor IS NULL OR sp.id::text > p_cursor)
-    order by sp.id asc
+    where (p_cursor IS NULL OR sp.id < p_cursor)
+    order by sp.id desc
     limit v_limit
   ) t;
 
@@ -82,7 +83,7 @@ $$;
 -- list_campaigns: return flat array
 -- -----------------------------------------------------------------------------
 create or replace function api.list_campaigns(
-  p_org_id uuid default null,
+  p_org_id text default null,
   p_limit int default 20,
   p_cursor text default null
 )
@@ -93,7 +94,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id::text from app.profiles pr where pr.id = auth.uid()));
   v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
   v_rows jsonb;
 begin
@@ -106,8 +107,8 @@ begin
     select to_jsonb(c.*) as data
     from app.fundraising_campaigns c
     where c.organization_id = v_org_id
-      and (p_cursor IS NULL OR c.id::text > p_cursor)
-    order by c.id asc
+      and (p_cursor IS NULL OR c.id < p_cursor)
+    order by c.id desc
     limit v_limit
   ) t;
 
@@ -123,7 +124,7 @@ $$;
 -- get_organization_members: return flat array
 -- -----------------------------------------------------------------------------
 create or replace function api.get_organization_members(
-  p_org_id uuid default null,
+  p_org_id text default null,
   p_limit int default 20,
   p_cursor text default null
 )
@@ -134,7 +135,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id::text from app.profiles pr where pr.id = auth.uid()));
   v_limit int := least(greatest(coalesce(p_limit, 20), 1), 100);
   v_rows jsonb;
 begin
@@ -145,7 +146,7 @@ begin
   select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
   from (
     select jsonb_build_object(
-      'user_id', om.user_id,
+      'user_id', om.user_id::text,
       'email', u.email,
       'display_name', p.display_name,
       'role', om.role,
@@ -161,8 +162,8 @@ begin
     join auth.users u on u.id = om.user_id
     left join app.profiles p on p.id = om.user_id
     where om.organization_id = v_org_id
-      and (p_cursor IS NULL OR om.user_id::text > p_cursor)
-    order by om.user_id asc
+      and (p_cursor IS NULL OR om.user_id::text < p_cursor)
+    order by om.user_id::text desc
     limit v_limit
   ) t;
 
@@ -174,4 +175,8 @@ begin
 end;
 $$;
 
--- Grants unchanged
+-- Grants
+grant execute on function api.list_all_organizations(int, text) to authenticated;
+grant execute on function api.list_plans(int, text) to authenticated;
+grant execute on function api.list_campaigns(text, int, text) to authenticated;
+grant execute on function api.get_organization_members(text, int, text) to authenticated;

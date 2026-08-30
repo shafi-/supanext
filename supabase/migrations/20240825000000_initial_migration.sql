@@ -48,6 +48,42 @@ as $$
   select encode(security.digest(p_token, 'sha256'), 'hex');
 $$;
 
+-- ULID: 26 chars Crockford Base32. First 10 = timestamp (48-bit ms-since-epoch),
+-- next 16 = randomness. Time-sortable — sorting by id desc gives newest first.
+-- Filter and order by id are now consistent — fixes broken pagination.
+create or replace function security.generate_ulid()
+returns text
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  t_ms bigint := (extract(epoch from clock_timestamp()) * 1000)::bigint;
+  rand_bytes bytea := gen_random_bytes(10);
+  t_chars text := '';
+  r_chars text := '';
+  alphabet text := '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+begin
+  -- Encode timestamp as 10 Crockford base32 chars (LSB first, reversed to MSB first)
+  for i in 1..10 loop
+    t_chars := substr(alphabet, (t_ms % 32)::int + 1, 1) || t_chars;
+    t_ms := t_ms / 32;
+  end loop;
+
+  -- Encode 10 random bytes as 16 base32 chars (5 bits per char, 80 bits / 5 = 16)
+  for i in 0..15 loop
+    if i % 2 = 0 then
+      r_chars := r_chars || substr(alphabet, (get_byte(rand_bytes, i / 2) >> 4) + 1, 1);
+    else
+      r_chars := r_chars || substr(alphabet, (get_byte(rand_bytes, i / 2) & 15) + 1, 1);
+    end if;
+  end loop;
+
+  return t_chars || r_chars;
+end;
+$$;
+
 revoke all on schema app from public, anon, authenticated;
 revoke all on schema security from public, anon, authenticated;
 revoke all on schema api from public;
@@ -99,7 +135,7 @@ create table if not exists app.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
   avatar_url text,
-  active_organization_id uuid,
+  active_organization_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -133,7 +169,7 @@ create trigger on_auth_user_created
 -- Organizations
 -- -----------------------------------------------------------------------------
 create table if not exists app.organizations (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   name text not null check (length(trim(name)) between 1 and 200),
   slug text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$'),
   status app.organization_status not null default 'pending',
@@ -153,7 +189,7 @@ create index if not exists organizations_status_idx on app.organizations(status)
 create index if not exists organizations_created_by_idx on app.organizations(created_by);
 
 create table if not exists app.organization_members (
-  organization_id uuid not null references app.organizations(id) on delete cascade,
+  organization_id text not null references app.organizations(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   role app.organization_role not null default 'member',
   created_at timestamptz not null default now(),
@@ -179,7 +215,7 @@ create table if not exists app.system_admins (
 -- Permissions / features
 -- -----------------------------------------------------------------------------
 create table if not exists app.features (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   code text not null unique,
   name text not null,
   description text,
@@ -187,21 +223,21 @@ create table if not exists app.features (
 );
 
 create table if not exists app.permissions (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   code text not null unique,
   name text not null,
   description text,
   scope app.permission_scope not null default 'organization',
-  feature_id uuid references app.features(id) on delete set null,
+  feature_id text references app.features(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
 create index if not exists permissions_feature_idx on app.permissions(feature_id);
 
 create table if not exists app.organization_member_permissions (
-  organization_id uuid not null,
+  organization_id text not null,
   user_id uuid not null,
-  permission_id uuid not null references app.permissions(id) on delete cascade,
+  permission_id text not null references app.permissions(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (organization_id, user_id, permission_id),
   foreign key (organization_id, user_id)
@@ -216,8 +252,8 @@ create index if not exists member_permissions_user_org_idx
 -- Invitations
 -- -----------------------------------------------------------------------------
 create table if not exists app.organization_invitations (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references app.organizations(id) on delete cascade,
+  id text primary key default security.generate_ulid(),
+  organization_id text not null references app.organizations(id) on delete cascade,
   email text not null,
   role app.organization_role not null,
   token_hash text not null unique,
@@ -245,7 +281,7 @@ create unique index if not exists invitations_one_pending_email_org_idx
 -- Subscription plans / entitlements
 -- -----------------------------------------------------------------------------
 create table if not exists app.subscription_plans (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default security.generate_ulid(),
   code text not null unique,
   name text not null,
   description text,
@@ -259,16 +295,16 @@ create table if not exists app.subscription_plans (
 );
 
 create table if not exists app.plan_features (
-  plan_id uuid not null references app.subscription_plans(id) on delete cascade,
-  feature_id uuid not null references app.features(id) on delete cascade,
+  plan_id text not null references app.subscription_plans(id) on delete cascade,
+  feature_id text not null references app.features(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (plan_id, feature_id)
 );
 
 create table if not exists app.organization_subscriptions (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references app.organizations(id) on delete cascade,
-  plan_id uuid not null references app.subscription_plans(id),
+  id text primary key default security.generate_ulid(),
+  organization_id text not null references app.organizations(id) on delete cascade,
+  plan_id text not null references app.subscription_plans(id),
   status app.subscription_status not null default 'active',
   starts_at timestamptz not null default now(),
   ends_at timestamptz,
@@ -292,15 +328,15 @@ create index if not exists org_subscriptions_org_idx
 -- Fundraising campaigns
 -- -----------------------------------------------------------------------------
 create table if not exists app.fundraising_campaigns (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references app.organizations(id) on delete cascade,
+  id text primary key default security.generate_ulid(),
+  organization_id text not null references app.organizations(id) on delete cascade,
   name text not null check (length(trim(name)) between 1 and 200),
   description text,
   goal_minor bigint check (goal_minor is null or goal_minor >= 0),
   currency text not null default 'USD' check (currency ~ '^[A-Z]{3}$'),
   starts_at timestamptz,
   ends_at timestamptz,
-  created_by uuid not null references auth.users(id),
+  created_by text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (ends_at is null or starts_at is null or ends_at > starts_at)
@@ -316,10 +352,10 @@ create table if not exists app.audit_log (
   id bigint generated always as identity primary key,
   occurred_at timestamptz not null default now(),
   actor_user_id uuid references auth.users(id) on delete set null,
-  organization_id uuid references app.organizations(id) on delete set null,
+  organization_id text references app.organizations(id) on delete set null,
   action text not null,
   entity_type text,
-  entity_id uuid,
+  entity_id text,
   metadata jsonb not null default '{}'::jsonb
 );
 
@@ -381,8 +417,8 @@ $$;
 -- Membership + context primitive. Resolves coalesce(p_org_id, active org)
 -- and returns the caller's role and that organization's status.
 -- Zero rows when not a member or when there is no resolvable organization.
-create or replace function security.has_role_in_active_org(p_org_id uuid default null)
-returns table (organization_id uuid, member_role app.organization_role, org_status app.organization_status)
+create or replace function security.has_role_in_active_org(p_org_id text default null)
+returns table (organization_id text, member_role app.organization_role, org_status app.organization_status)
 language sql
 stable
 security definer
@@ -416,7 +452,7 @@ as $$
   where p.code = p_permission;
 $$;
 
-create or replace function security.has_explicit_permission(p_org_id uuid, p_permission text)
+create or replace function security.has_explicit_permission(p_org_id text, p_permission text)
 returns boolean
 language sql
 stable
@@ -434,7 +470,7 @@ as $$
   );
 $$;
 
-create or replace function security.has_feature(p_org_id uuid, p_feature text)
+create or replace function security.has_feature(p_org_id text, p_feature text)
 returns boolean
 language sql
 stable
@@ -456,7 +492,7 @@ $$;
 
 -- Composites: pure logic over the primitives above.
 
-create or replace function security.is_org_member(p_org_id uuid)
+create or replace function security.is_org_member(p_org_id text)
 returns boolean
 language sql
 stable
@@ -470,7 +506,7 @@ as $$
   );
 $$;
 
-create or replace function security.is_org_admin(p_org_id uuid)
+create or replace function security.is_org_admin(p_org_id text)
 returns boolean
 language sql
 stable
@@ -489,7 +525,7 @@ $$;
 -- If p_org_id is NULL, the user's active organization is used.
 create or replace function security.can_perform(
   p_permission text,
-  p_org_id uuid default null
+  p_org_id text default null
 )
 returns boolean
 language plpgsql
@@ -500,7 +536,7 @@ as $$
 declare
   v_user_id uuid := auth.uid();
   m record;
-  v_org_id uuid;
+  v_org_id text;
   v_role app.organization_role;
   v_status app.organization_status;
 begin
@@ -661,7 +697,7 @@ begin
 end;
 $$;
 
-create or replace function api.set_active_organization(p_org_id uuid)
+create or replace function api.set_active_organization(p_org_id text)
 returns jsonb
 language plpgsql
 security definer
@@ -709,13 +745,13 @@ $$;
 -- API: organization signup / administration
 -- -----------------------------------------------------------------------------
 create or replace function api.request_organization(p_name text, p_slug text)
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid;
+  v_org_id text;
   v_user_id uuid := auth.uid();
 begin
   if v_user_id is null then
@@ -742,7 +778,7 @@ exception when unique_violation then
 end;
 $$;
 
-create or replace function api.approve_organization(p_org_id uuid)
+create or replace function api.approve_organization(p_org_id text)
 returns void
 language plpgsql
 security definer
@@ -766,7 +802,7 @@ begin
 end;
 $$;
 
-create or replace function api.reject_organization(p_org_id uuid, p_note text default null)
+create or replace function api.reject_organization(p_org_id text, p_note text default null)
 returns void
 language plpgsql
 security definer
@@ -791,7 +827,7 @@ begin
 end;
 $$;
 
-create or replace function api.suspend_organization(p_org_id uuid, p_note text)
+create or replace function api.suspend_organization(p_org_id text, p_note text)
 returns void
 language plpgsql
 security definer
@@ -819,7 +855,7 @@ begin
 end;
 $$;
 
-create or replace function api.unsuspend_organization(p_org_id uuid)
+create or replace function api.unsuspend_organization(p_org_id text)
 returns void
 language plpgsql
 security definer
@@ -844,7 +880,7 @@ begin
 end;
 $$;
 
-create or replace function api.get_organization_status(p_org_id uuid default null)
+create or replace function api.get_organization_status(p_org_id text default null)
 returns jsonb
 language sql
 stable
@@ -868,7 +904,7 @@ $$;
 create or replace function api.invite_member(
   p_email text,
   p_role app.organization_role default 'member',
-  p_org_id uuid default null
+  p_org_id text default null
 )
 returns jsonb
 language plpgsql
@@ -876,7 +912,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
   v_invitation_id uuid;
   v_token text;
   v_hash text;
@@ -929,7 +965,7 @@ end;
 $$;
 
 create or replace function api.accept_invitation(p_token text)
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
@@ -939,7 +975,7 @@ declare
   v_hash text := security.token_digest(p_token);
   v_inv app.organization_invitations%rowtype;
   v_user_email text;
-  v_org_id uuid;
+  v_org_id text;
 begin
   if v_user_id is null then
     raise exception using errcode = '28000', message = 'Not authenticated';
@@ -985,14 +1021,14 @@ begin
 end;
 $$;
 
-create or replace function api.revoke_invitation(p_invitation_id uuid)
+create or replace function api.revoke_invitation(p_invitation_id text)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid;
+  v_org_id text;
 begin
   select organization_id into v_org_id
   from app.organization_invitations
@@ -1011,7 +1047,7 @@ $$;
 create or replace function api.change_member_role(
   p_user_id uuid,
   p_role app.organization_role,
-  p_org_id uuid default null
+  p_org_id text default null
 )
 returns void
 language plpgsql
@@ -1019,7 +1055,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
   v_member_role app.organization_role;
 begin
   if not security.can_perform('organization.members.change_role', v_org_id) then
@@ -1069,7 +1105,7 @@ $$;
 
 create or replace function api.remove_member(
   p_user_id uuid,
-  p_org_id uuid default null
+  p_org_id text default null
 )
 returns void
 language plpgsql
@@ -1077,7 +1113,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
   v_role app.organization_role;
 begin
   if not security.can_perform('organization.members.remove', v_org_id) then
@@ -1124,7 +1160,7 @@ create or replace function api.set_member_permission(
   p_user_id uuid,
   p_permission text,
   p_granted boolean,
-  p_org_id uuid default null
+  p_org_id text default null
 )
 returns void
 language plpgsql
@@ -1132,7 +1168,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
   v_permission_id uuid;
 begin
   if not security.can_perform('organization.members.permissions.manage', v_org_id) then
@@ -1167,7 +1203,7 @@ begin
 end;
 $$;
 
-create or replace function api.get_organization_members(p_org_id uuid default null)
+create or replace function api.get_organization_members(p_org_id text default null)
 returns jsonb
 language plpgsql
 stable
@@ -1175,7 +1211,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
   v_result jsonb;
 begin
   if not security.is_org_member(v_org_id) then
@@ -1210,7 +1246,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- API: subscriptions / plans
 -- -----------------------------------------------------------------------------
-create or replace function api.get_current_subscription(p_org_id uuid default null)
+create or replace function api.get_current_subscription(p_org_id text default null)
 returns jsonb
 language plpgsql
 stable
@@ -1218,7 +1254,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
   v_result jsonb;
 begin
   if not security.is_org_member(v_org_id) then
@@ -1259,12 +1295,12 @@ create or replace function api.create_plan(
   p_currency text,
   p_billing_interval text
 )
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_id uuid;
+declare v_id text;
 begin
   if not security.can_perform('system.plans.manage') then
     raise exception using errcode = '42501', message = 'Not authorized';
@@ -1276,13 +1312,13 @@ begin
 end;
 $$;
 
-create or replace function api.set_plan_feature(p_plan_id uuid, p_feature_code text, p_enabled boolean)
+create or replace function api.set_plan_feature(p_plan_id text, p_feature_code text, p_enabled boolean)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_feature_id uuid;
+declare v_feature_id text;
 begin
   if not security.can_perform('system.plans.manage') then
     raise exception using errcode = '42501', message = 'Not authorized';
@@ -1305,18 +1341,18 @@ end;
 $$;
 
 create or replace function api.assign_subscription(
-  p_org_id uuid,
-  p_plan_id uuid,
+  p_org_id text,
+  p_plan_id text,
   p_status app.subscription_status default 'active',
   p_starts_at timestamptz default now(),
   p_ends_at timestamptz default null
 )
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_id uuid;
+declare v_id text;
 begin
   -- Subscription lifecycle is system-administered only. Organization admins
   -- must never be able to self-assign plans (entitlement bypass).
@@ -1344,14 +1380,14 @@ begin
 end;
 $$;
 
-create or replace function api.deactivate_subscription(p_org_id uuid)
+create or replace function api.deactivate_subscription(p_org_id text)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_id uuid;
+  v_id text;
 begin
   if not security.is_system_admin() then
     raise exception using errcode = '42501', message = 'Not authorized';
@@ -1575,7 +1611,7 @@ $$;
 
 -- Sysadmin-only: resolve a user id from email (admin management UI).
 create or replace function api.find_user_id_by_email(p_email text)
-returns uuid
+returns text
 language plpgsql
 stable
 security definer
@@ -1626,7 +1662,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- API: fundraising campaigns
 -- -----------------------------------------------------------------------------
-create or replace function api.list_campaigns(p_org_id uuid default null)
+create or replace function api.list_campaigns(p_org_id text default null)
 returns jsonb
 language plpgsql
 stable
@@ -1634,7 +1670,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
   v_result jsonb;
 begin
   if not security.can_perform('fundraising.view', v_org_id) then
@@ -1657,16 +1693,16 @@ create or replace function api.create_campaign(
   p_currency text default 'USD',
   p_starts_at timestamptz default null,
   p_ends_at timestamptz default null,
-  p_org_id uuid default null
+  p_org_id text default null
 )
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
-  v_id uuid;
+  v_org_id text := coalesce(p_org_id, (select pr.active_organization_id from app.profiles pr where pr.id = auth.uid()));
+  v_id text;
 begin
   if not security.can_perform('fundraising.create', v_org_id) then
     raise exception using errcode = '42501', message = 'Not authorized';
@@ -1676,7 +1712,7 @@ begin
     organization_id, name, description, goal_minor, currency, starts_at, ends_at, created_by
   )
   values (
-    v_org_id, trim(p_name), p_description, p_goal_minor, upper(p_currency), p_starts_at, p_ends_at, auth.uid()
+    v_org_id, trim(p_name), p_description, p_goal_minor, upper(p_currency), p_starts_at, p_ends_at, auth.uid()::text
   )
   returning id into v_id;
 
@@ -1688,7 +1724,7 @@ end;
 $$;
 
 create or replace function api.update_campaign(
-  p_campaign_id uuid,
+  p_campaign_id text,
   p_name text default null,
   p_description text default null,
   p_goal_minor bigint default null,
@@ -1702,7 +1738,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_org_id uuid;
+  v_org_id text;
 begin
   select organization_id into v_org_id
   from app.fundraising_campaigns
@@ -1723,13 +1759,13 @@ begin
 end;
 $$;
 
-create or replace function api.delete_campaign(p_campaign_id uuid)
+create or replace function api.delete_campaign(p_campaign_id text)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_org_id uuid;
+declare v_org_id text;
 begin
   select organization_id into v_org_id from app.fundraising_campaigns where id = p_campaign_id;
   if v_org_id is null or not security.can_perform('fundraising.delete', v_org_id) then
