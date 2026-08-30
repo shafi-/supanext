@@ -60,7 +60,7 @@ set search_path = ''
 as $$
 declare
   t_ms bigint := (extract(epoch from clock_timestamp()) * 1000)::bigint;
-  rand_bytes bytea := gen_random_bytes(10);
+  rand_bytes bytea := security.gen_random_bytes(10);
   t_chars text := '';
   r_chars text := '';
   alphabet text := '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -1955,6 +1955,28 @@ for select to authenticated
 using (false);
 
 -- -----------------------------------------------------------------------------
+-- Restore table-level privileges that RLS will gate.
+-- Without these, the blanket `revoke all` from anon/authenticated earlier
+-- blocks even queries that the policy intends to allow. The policy `using`
+-- clause is what filters the rows.
+grant select on app.profiles to authenticated;
+grant select on app.organizations to authenticated;
+grant select on app.organization_members to authenticated;
+grant select on app.organization_member_permissions to authenticated;
+grant select on app.organization_invitations to authenticated;
+grant select on app.organization_subscriptions to authenticated;
+grant select, insert, update, delete on app.fundraising_campaigns to authenticated;
+-- Catalog tables and the admin-only log: SELECT is granted so RLS can reject
+-- with 0 rows (using(false)). Without this, the blanket revoke short-circuits
+-- with a permission-denied error that masks the policy intent.
+grant select on app.subscription_plans to authenticated;
+grant select on app.features to authenticated;
+grant select on app.permissions to authenticated;
+grant select on app.plan_features to authenticated;
+grant select on app.audit_log to authenticated;
+grant select on app.system_admins to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- Lock down function execution explicitly.
 --
 -- Policy-referenced helpers and client-facing decision helpers get EXECUTE for
@@ -1963,15 +1985,15 @@ using (false);
 -- USAGE on the schema itself is required to resolve any of these names.
 grant usage on schema security to authenticated;
 -- -----------------------------------------------------------------------------
-revoke execute on function security.has_role_in_active_org(uuid) from public, anon, authenticated;
+revoke execute on function security.has_role_in_active_org(text) from public, anon, authenticated;
 revoke execute on function security.permission_meta(text) from public, anon, authenticated;
-revoke execute on function security.has_explicit_permission(uuid, text) from public, anon, authenticated;
+revoke execute on function security.has_explicit_permission(text, text) from public, anon, authenticated;
 
 grant execute on function security.is_system_admin() to authenticated;
-grant execute on function security.is_org_member(uuid) to authenticated;
-grant execute on function security.is_org_admin(uuid) to authenticated;
-grant execute on function security.can_perform(text, uuid) to authenticated;
-grant execute on function security.has_feature(uuid, text) to authenticated;
+grant execute on function security.is_org_member(text) to authenticated;
+grant execute on function security.is_org_admin(text) to authenticated;
+grant execute on function security.can_perform(text, text) to authenticated;
+grant execute on function security.has_feature(text, text) to authenticated;
 
 -- bootstrap_system_admin: ops-only. service_role keeps the default PUBLIC
 -- execute after the revokes below; anon/authenticated must never reach it.
@@ -1995,31 +2017,31 @@ grant execute on function api.find_user_id_by_email(text) to authenticated;
 grant execute on function api.list_all_organizations(int) to authenticated;
 grant execute on function api.list_plans() to authenticated;
 grant execute on function api.get_session_context() to authenticated;
-grant execute on function api.set_active_organization(uuid) to authenticated;
+grant execute on function api.set_active_organization(text) to authenticated;
 grant execute on function api.get_my_organizations() to authenticated;
 grant execute on function api.request_organization(text, text) to authenticated;
-grant execute on function api.approve_organization(uuid) to authenticated;
-grant execute on function api.reject_organization(uuid, text) to authenticated;
-grant execute on function api.suspend_organization(uuid, text) to authenticated;
-grant execute on function api.unsuspend_organization(uuid) to authenticated;
-grant execute on function api.get_organization_status(uuid) to authenticated;
-grant execute on function api.invite_member(text, app.organization_role, uuid) to authenticated;
+grant execute on function api.approve_organization(text) to authenticated;
+grant execute on function api.reject_organization(text, text) to authenticated;
+grant execute on function api.suspend_organization(text, text) to authenticated;
+grant execute on function api.unsuspend_organization(text) to authenticated;
+grant execute on function api.get_organization_status(text) to authenticated;
+grant execute on function api.invite_member(text, app.organization_role, text) to authenticated;
 grant execute on function api.accept_invitation(text) to authenticated;
-grant execute on function api.revoke_invitation(uuid) to authenticated;
-grant execute on function api.change_member_role(uuid, app.organization_role, uuid) to authenticated;
-grant execute on function api.remove_member(uuid, uuid) to authenticated;
-grant execute on function api.set_member_permission(uuid, text, boolean, uuid) to authenticated;
-grant execute on function api.get_organization_members(uuid) to authenticated;
-grant execute on function api.get_current_subscription(uuid) to authenticated;
+grant execute on function api.revoke_invitation(text) to authenticated;
+grant execute on function api.change_member_role(uuid, app.organization_role, text) to authenticated;
+grant execute on function api.remove_member(uuid, text) to authenticated;
+grant execute on function api.set_member_permission(uuid, text, boolean, text) to authenticated;
+grant execute on function api.get_organization_members(text) to authenticated;
+grant execute on function api.get_current_subscription(text) to authenticated;
 grant execute on function api.create_plan(text, text, text, bigint, text, text) to authenticated;
-grant execute on function api.set_plan_feature(uuid, text, boolean) to authenticated;
-grant execute on function api.assign_subscription(uuid, uuid, app.subscription_status, timestamptz, timestamptz) to authenticated;
-grant execute on function api.deactivate_subscription(uuid) to authenticated;
+grant execute on function api.set_plan_feature(text, text, boolean) to authenticated;
+grant execute on function api.assign_subscription(text, text, app.subscription_status, timestamptz, timestamptz) to authenticated;
+grant execute on function api.deactivate_subscription(text) to authenticated;
 grant execute on function api.grant_system_admin(uuid) to authenticated;
 grant execute on function api.revoke_system_admin(uuid) to authenticated;
-grant execute on function api.list_campaigns(uuid) to authenticated;
-grant execute on function api.create_campaign(text, text, bigint, text, timestamptz, timestamptz, uuid) to authenticated;
-grant execute on function api.update_campaign(uuid, text, text, bigint, text, timestamptz, timestamptz) to authenticated;
-grant execute on function api.delete_campaign(uuid) to authenticated;
+grant execute on function api.list_campaigns(text) to authenticated;
+grant execute on function api.create_campaign(text, text, bigint, text, timestamptz, timestamptz, text) to authenticated;
+grant execute on function api.update_campaign(text, text, text, bigint, text, timestamptz, timestamptz) to authenticated;
+grant execute on function api.delete_campaign(text) to authenticated;
 
 commit;

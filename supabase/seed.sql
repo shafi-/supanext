@@ -17,7 +17,7 @@ on conflict (code) do nothing;
 
 -- -----------------------------------------------------------------------------
 -- Permissions: granular grants checked by security.can_perform().
--- scope = 'organization' (per-org) or 'platform' (global, requires system admin).
+-- scope = 'organization' (per-org) or 'system' (global, requires system admin).
 -- -----------------------------------------------------------------------------
 insert into app.permissions (code, name, description, scope, feature_id) values
   -- Organization scope
@@ -31,11 +31,11 @@ insert into app.permissions (code, name, description, scope, feature_id) values
   ('organization.members.change_role',      'Change member roles',      'Change a member''s role.',                         'organization', (select id from app.features where code = 'organization_administration')),
   ('organization.members.permissions.manage', 'Manage member permissions', 'Grant or revoke per-member permissions.',        'organization', (select id from app.features where code = 'organization_administration')),
   -- Platform scope (require system admin)
-  ('system.organizations.approve',  'Approve organizations',  'Approve pending organization requests.',  'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.organizations.reject',   'Reject organizations',   'Reject pending organization requests.',   'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.organizations.suspend',  'Suspend organizations',  'Suspend active organizations.',           'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.organizations.unsuspend','Unsuspend organizations','Reactivate suspended organizations.',     'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.plans.manage',           'Manage plans',           'Create, update, or deactivate plans.',    'platform', (select id from app.features where code = 'platform_administration'))
+  ('system.organizations.approve',  'Approve organizations',  'Approve pending organization requests.',  'system', (select id from app.features where code = 'platform_administration')),
+  ('system.organizations.reject',   'Reject organizations',   'Reject pending organization requests.',   'system', (select id from app.features where code = 'platform_administration')),
+  ('system.organizations.suspend',  'Suspend organizations',  'Suspend active organizations.',           'system', (select id from app.features where code = 'platform_administration')),
+  ('system.organizations.unsuspend','Unsuspend organizations','Reactivate suspended organizations.',     'system', (select id from app.features where code = 'platform_administration')),
+  ('system.plans.manage',           'Manage plans',           'Create, update, or deactivate plans.',    'system', (select id from app.features where code = 'platform_administration'))
 on conflict (code) do nothing;
 
 -- -----------------------------------------------------------------------------
