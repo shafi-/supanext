@@ -60,8 +60,9 @@ drop type if exists app.permission_scope cascade;
 alter table app.profiles drop column if exists active_organization_id;
 drop index if exists profiles_active_org_idx;
 
--- Add user_id to campaigns, drop organization_id
-alter table app.fundraising_campaigns drop column if exists organization_id;
+-- Add user_id to campaigns, drop organization_id (cascade drops dependent policies
+-- that reference organization_id; user-centric replaces them with user_id-based ones below).
+alter table app.fundraising_campaigns drop column if exists organization_id cascade;
 alter table app.fundraising_campaigns add column if not exists user_id uuid not null references auth.users(id) on delete cascade;
 -- Switch campaign id to ULID for time-sortable pagination
 alter table app.fundraising_campaigns
@@ -702,6 +703,7 @@ end;
 $$;
 
 -- find_user_id_by_email (keep as-is)
+drop function if exists api.find_user_id_by_email(text) cascade;
 create or replace function api.find_user_id_by_email(p_email text)
 returns uuid
 language plpgsql
@@ -772,47 +774,49 @@ using (security.is_system_admin());
 -- ---------------------------------------------------------------------------
 grant execute on function api.get_session_context() to authenticated;
 grant execute on function api.get_my_subscription() to authenticated;
-grant execute on function api.list_my_campaigns(int, timestamptz) to authenticated;
+grant execute on function api.list_my_campaigns(int, text) to authenticated;
 grant execute on function api.create_campaign(text, text, bigint, text, timestamptz, timestamptz) to authenticated;
-grant execute on function api.update_campaign(uuid, text, text, bigint, text, timestamptz, timestamptz) to authenticated;
-grant execute on function api.delete_campaign(uuid) to authenticated;
-grant execute on function api.list_all_users(int, uuid) to authenticated;
-grant execute on function api.list_all_subscriptions(int, uuid) to authenticated;
+grant execute on function api.update_campaign(text, text, text, bigint, text, timestamptz, timestamptz) to authenticated;
+grant execute on function api.delete_campaign(text) to authenticated;
+grant execute on function api.list_all_users(int, text) to authenticated;
+grant execute on function api.list_all_subscriptions(int, text) to authenticated;
 grant execute on function api.list_plans() to authenticated;
 grant execute on function api.find_user_id_by_email(text) to authenticated;
-grant execute on function api.assign_user_subscription(uuid, uuid, app.subscription_status, timestamptz, timestamptz) to authenticated;
+grant execute on function api.assign_user_subscription(uuid, text, app.subscription_status, timestamptz, timestamptz) to authenticated;
 grant execute on function api.deactivate_user_subscription(uuid) to authenticated;
-grant execute on function api.create_plan(text, text, text, bigint, text, text) to authenticated;
-grant execute on function api.set_plan_feature(uuid, text, boolean) to authenticated;
 grant execute on function api.invite_platform_user(text) to authenticated;
 grant execute on function api.accept_platform_invitation(text) to authenticated;
-grant execute on function api.revoke_platform_invitation(uuid) to authenticated;
+grant execute on function api.revoke_platform_invitation(text) to authenticated;
 grant execute on function api.get_platform_invitation_preview(text) to anon, authenticated;
 grant execute on function api.grant_system_admin(uuid) to authenticated;
 grant execute on function api.revoke_system_admin(uuid) to authenticated;
 
--- Revoke old functions that no longer exist
-revoke execute on function api.get_organization_members(uuid) from authenticated;
-revoke execute on function api.change_member_role(uuid, app.organization_role, uuid) from authenticated;
-revoke execute on function api.remove_member(uuid, uuid) from authenticated;
-revoke execute on function api.set_member_permission(uuid, text, boolean, uuid) from authenticated;
-revoke execute on function api.invite_member(text, app.organization_role, uuid) from authenticated;
-revoke execute on function api.accept_invitation(text) from authenticated;
-revoke execute on function api.revoke_invitation(uuid) from authenticated;
-revoke execute on function api.get_current_subscription(uuid) from authenticated;
-revoke execute on function api.assign_subscription(uuid, uuid, app.subscription_status, timestamptz, timestamptz) from authenticated;
-revoke execute on function api.deactivate_subscription(uuid) from authenticated;
-revoke execute on function api.request_organization(text, text) from authenticated;
-revoke execute on function api.approve_organization(uuid) from authenticated;
-revoke execute on function api.reject_organization(uuid, text) from authenticated;
-revoke execute on function api.suspend_organization(uuid, text) from authenticated;
-revoke execute on function api.unsuspend_organization(uuid) from authenticated;
-revoke execute on function api.get_organization_status(uuid) from authenticated;
-revoke execute on function api.set_active_organization(uuid) from authenticated;
-revoke execute on function api.get_my_organizations() from authenticated;
-revoke execute on function api.list_all_organizations(int) from authenticated;
-revoke execute on function api.list_public_organizations(int) from anon, authenticated;
-revoke execute on function api.get_invitation_preview(text) from anon, authenticated;
-revoke execute on function api.list_campaigns(uuid) from authenticated;
+-- Revoke old functions that no longer exist. The function/type may already
+-- be gone (dropped above), so swallow any "does not exist" errors.
+do $$
+begin
+  begin revoke execute on function api.get_organization_members(uuid) from authenticated; exception when others then raise notice 'skip: get_organization_members'; end;
+  begin revoke execute on function api.change_member_role(uuid, app.organization_role, uuid) from authenticated; exception when others then raise notice 'skip: change_member_role'; end;
+  begin revoke execute on function api.remove_member(uuid, uuid) from authenticated; exception when others then raise notice 'skip: remove_member'; end;
+  begin revoke execute on function api.set_member_permission(uuid, text, boolean, uuid) from authenticated; exception when others then raise notice 'skip: set_member_permission'; end;
+  begin revoke execute on function api.invite_member(text, app.organization_role, uuid) from authenticated; exception when others then raise notice 'skip: invite_member'; end;
+  begin revoke execute on function api.accept_invitation(text) from authenticated; exception when others then raise notice 'skip: accept_invitation'; end;
+  begin revoke execute on function api.revoke_invitation(uuid) from authenticated; exception when others then raise notice 'skip: revoke_invitation'; end;
+  begin revoke execute on function api.get_current_subscription(uuid) from authenticated; exception when others then raise notice 'skip: get_current_subscription'; end;
+  begin revoke execute on function api.assign_subscription(uuid, uuid, app.subscription_status, timestamptz, timestamptz) from authenticated; exception when others then raise notice 'skip: assign_subscription'; end;
+  begin revoke execute on function api.deactivate_subscription(uuid) from authenticated; exception when others then raise notice 'skip: deactivate_subscription'; end;
+  begin revoke execute on function api.request_organization(text, text) from authenticated; exception when others then raise notice 'skip: request_organization'; end;
+  begin revoke execute on function api.approve_organization(uuid) from authenticated; exception when others then raise notice 'skip: approve_organization'; end;
+  begin revoke execute on function api.reject_organization(uuid, text) from authenticated; exception when others then raise notice 'skip: reject_organization'; end;
+  begin revoke execute on function api.suspend_organization(uuid, text) from authenticated; exception when others then raise notice 'skip: suspend_organization'; end;
+  begin revoke execute on function api.unsuspend_organization(uuid) from authenticated; exception when others then raise notice 'skip: unsuspend_organization'; end;
+  begin revoke execute on function api.get_organization_status(uuid) from authenticated; exception when others then raise notice 'skip: get_organization_status'; end;
+  begin revoke execute on function api.set_active_organization(uuid) from authenticated; exception when others then raise notice 'skip: set_active_organization'; end;
+  begin revoke execute on function api.get_my_organizations() from authenticated; exception when others then raise notice 'skip: get_my_organizations'; end;
+  begin revoke execute on function api.list_all_organizations(int) from authenticated; exception when others then raise notice 'skip: list_all_organizations'; end;
+  begin revoke execute on function api.list_public_organizations(int) from anon, authenticated; exception when others then raise notice 'skip: list_public_organizations'; end;
+  begin revoke execute on function api.get_invitation_preview(text) from anon, authenticated; exception when others then raise notice 'skip: get_invitation_preview'; end;
+  begin revoke execute on function api.list_campaigns(uuid) from authenticated; exception when others then raise notice 'skip: list_campaigns'; end;
+end $$;
 
 commit;

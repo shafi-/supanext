@@ -17,26 +17,46 @@ on conflict (code) do nothing;
 
 -- -----------------------------------------------------------------------------
 -- Permissions: granular grants checked by security.can_perform().
--- scope = 'organization' (per-org) or 'platform' (global, requires system admin).
+-- scope = 'organization' (per-org) or 'system' (global, requires system admin).
+-- The scope column is dropped in the user-centric branch — guard the insert
+-- with a column-existence check so the same seed works on both branches.
 -- -----------------------------------------------------------------------------
-insert into app.permissions (code, name, description, scope, feature_id) values
-  -- Organization scope
-  ('fundraising.view',     'View campaigns',          'See campaigns for the current organization.',                                'organization', (select id from app.features where code = 'fundraising')),
-  ('fundraising.create',   'Create campaigns',        'Create new fundraising campaigns.',                                          'organization', (select id from app.features where code = 'fundraising')),
-  ('fundraising.update',   'Update campaigns',        'Edit existing fundraising campaigns.',                                        'organization', (select id from app.features where code = 'fundraising')),
-  ('fundraising.delete',   'Delete campaigns',        'Permanently remove fundraising campaigns.',                                   'organization', (select id from app.features where code = 'fundraising')),
-  ('fundraising.manage',  'Manage fundraising',      'Full fundraising permission set (view/create/update/delete).',               'organization', (select id from app.features where code = 'fundraising')),
-  ('organization.members.invite',           'Invite members',           'Send invitations to new members.',                'organization', (select id from app.features where code = 'organization_administration')),
-  ('organization.members.remove',           'Remove members',           'Remove members from the organization.',           'organization', (select id from app.features where code = 'organization_administration')),
-  ('organization.members.change_role',      'Change member roles',      'Change a member''s role.',                         'organization', (select id from app.features where code = 'organization_administration')),
-  ('organization.members.permissions.manage', 'Manage member permissions', 'Grant or revoke per-member permissions.',        'organization', (select id from app.features where code = 'organization_administration')),
-  -- Platform scope (require system admin)
-  ('system.organizations.approve',  'Approve organizations',  'Approve pending organization requests.',  'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.organizations.reject',   'Reject organizations',   'Reject pending organization requests.',   'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.organizations.suspend',  'Suspend organizations',  'Suspend active organizations.',           'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.organizations.unsuspend','Unsuspend organizations','Reactivate suspended organizations.',     'platform', (select id from app.features where code = 'platform_administration')),
-  ('system.plans.manage',           'Manage plans',           'Create, update, or deactivate plans.',    'platform', (select id from app.features where code = 'platform_administration'))
-on conflict (code) do nothing;
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'app' and table_name = 'permissions' and column_name = 'scope'
+  ) then
+    insert into app.permissions (code, name, description, scope, feature_id) values
+      -- Organization scope
+      ('fundraising.view',     'View campaigns',          'See campaigns for the current organization.',                                'organization', (select id from app.features where code = 'fundraising')),
+      ('fundraising.create',   'Create campaigns',        'Create new fundraising campaigns.',                                          'organization', (select id from app.features where code = 'fundraising')),
+      ('fundraising.update',   'Update campaigns',        'Edit existing fundraising campaigns.',                                        'organization', (select id from app.features where code = 'fundraising')),
+      ('fundraising.delete',   'Delete campaigns',        'Permanently remove fundraising campaigns.',                                   'organization', (select id from app.features where code = 'fundraising')),
+      ('fundraising.manage',  'Manage fundraising',      'Full fundraising permission set (view/create/update/delete).',               'organization', (select id from app.features where code = 'fundraising')),
+      ('organization.members.invite',           'Invite members',           'Send invitations to new members.',                'organization', (select id from app.features where code = 'organization_administration')),
+      ('organization.members.remove',           'Remove members',           'Remove members from the organization.',           'organization', (select id from app.features where code = 'organization_administration')),
+      ('organization.members.change_role',      'Change member roles',      'Change a member''s role.',                         'organization', (select id from app.features where code = 'organization_administration')),
+      ('organization.members.permissions.manage', 'Manage member permissions', 'Grant or revoke per-member permissions.',        'organization', (select id from app.features where code = 'organization_administration')),
+      -- System scope (require system admin)
+      ('system.organizations.approve',  'Approve organizations',  'Approve pending organization requests.',  'system', (select id from app.features where code = 'platform_administration')),
+      ('system.organizations.reject',   'Reject organizations',   'Reject pending organization requests.',   'system', (select id from app.features where code = 'platform_administration')),
+      ('system.organizations.suspend',  'Suspend organizations',  'Suspend active organizations.',           'system', (select id from app.features where code = 'platform_administration')),
+      ('system.organizations.unsuspend','Unsuspend organizations','Reactivate suspended organizations.',     'system', (select id from app.features where code = 'platform_administration')),
+      ('system.plans.manage',           'Manage plans',           'Create, update, or deactivate plans.',    'system', (select id from app.features where code = 'platform_administration'))
+    on conflict (code) do nothing;
+  else
+    -- user-centric: no scope column, no org permissions
+    insert into app.permissions (code, name, description, feature_id) values
+      ('fundraising.view',     'View campaigns',          'See your own campaigns.',                                                    (select id from app.features where code = 'fundraising')),
+      ('fundraising.create',   'Create campaigns',        'Create new fundraising campaigns.',                                          (select id from app.features where code = 'fundraising')),
+      ('fundraising.update',   'Update campaigns',        'Edit your own fundraising campaigns.',                                       (select id from app.features where code = 'fundraising')),
+      ('fundraising.delete',   'Delete campaigns',        'Permanently remove your own fundraising campaigns.',                         (select id from app.features where code = 'fundraising')),
+      ('fundraising.manage',   'Manage fundraising',      'Full fundraising permission set (view/create/update/delete).',               (select id from app.features where code = 'fundraising')),
+      ('system.plans.manage',  'Manage plans',            'Create, update, or deactivate plans.',                                       (select id from app.features where code = 'platform_administration'))
+    on conflict (code) do nothing;
+  end if;
+end $$;
 
 -- -----------------------------------------------------------------------------
 -- Subscription plans.

@@ -4,7 +4,7 @@
 
 begin;
 
-create or replace function api.get_org_stats(p_org_id uuid default null)
+create or replace function api.get_org_stats(p_org_id text default null)
 returns jsonb
 language sql
 stable
@@ -27,6 +27,6 @@ as $$
   where h.org_status <> 'rejected';
 $$;
 
-grant execute on function api.get_org_stats(uuid) to authenticated;
+grant execute on function api.get_org_stats(text) to authenticated;
 
 commit;

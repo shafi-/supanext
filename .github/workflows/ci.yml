@@ -42,7 +42,7 @@ jobs:
         run: pnpm vitest --run
 
   db-checks:
-    name: Database (migrations lint + type regen)
+    name: Database (migrations lint + type regen + RLS)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +68,24 @@ jobs:
             exit 1
           fi
           rm client/src/types/database.ts.gen
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Install client deps
+        working-directory: client
+        run: pnpm install --frozen-lockfile
+
+      - name: Run RLS integration tests
+        working-directory: client
+        run: SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres pnpm test:rls
 
       - name: Stop local stack
         if: always()

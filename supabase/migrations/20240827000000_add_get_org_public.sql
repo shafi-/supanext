@@ -13,7 +13,7 @@ as $$
     'created_at', o.created_at
   )
   from app.organizations o
-  where (o.id::text = p_org_id or o.slug = lower(trim(p_org_id)))
+  where (o.id = p_org_id or o.slug = lower(trim(p_org_id)))
     and o.status in ('active', 'pending')
   limit 1;
 $$;
