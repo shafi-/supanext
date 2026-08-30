@@ -1,39 +1,74 @@
--- Seed a system administrator for local development and E2E tests.
--- Supabase applies this automatically on `supabase db reset`.
--- Idempotent: safe to run multiple times.
+-- ====================================================================
+-- supabase/seed.sql
+-- Idempotent baseline data for fresh deployments.
+-- Run via `supabase db reset` (auto-applied) or `psql -f seed.sql`.
+-- ====================================================================
 
-do $$
-declare
-  v_user_id uuid := '00000000-0000-0000-0000-0000000000ad';
-  v_email text := 'system-admin@supanext.test';
-  v_password text := 'AdminPassword123!';
-begin
-  if not exists (select 1 from auth.users where email = v_email) then
-    insert into auth.users (
-      id, email, encrypted_password, email_confirmed_at,
-      raw_app_meta_data, raw_user_meta_data, role, aud,
-      created_at, updated_at, is_anonymous, is_sso_user
-    ) values (
-      v_user_id, v_email,
-      crypt(v_password, gen_salt('bf')), now(),
-      '{"provider":"email","providers":["email"]}'::jsonb,
-      '{"full_name":"System Admin"}'::jsonb,
-      'authenticated', 'authenticated',
-      now(), now(), false, false
-    );
+begin;
 
-    insert into auth.identities (
-      id, user_id, identity_data, provider_id, provider,
-      last_sign_in_at, created_at, updated_at
-    ) values (
-      v_user_id, v_user_id,
-      jsonb_build_object('sub', v_user_id::text, 'email', v_email),
-      'email', 'email',
-      now(), now(), now()
-    );
-  end if;
+-- -----------------------------------------------------------------------------
+-- Features: high-level capabilities gated behind plans.
+-- -----------------------------------------------------------------------------
+insert into app.features (code, name, description) values
+  ('fundraising', 'Fundraising', 'Run fundraising campaigns and accept donations.'),
+  ('platform_administration', 'Platform Administration', 'Manage other users and platform settings.'),
+  ('organization_administration', 'Organization Administration', 'Manage an organization, its members, and its subscriptions.')
+on conflict (code) do nothing;
 
-  insert into app.system_admins (user_id)
-  values (v_user_id)
-  on conflict (user_id) do nothing;
-end $$;
+-- -----------------------------------------------------------------------------
+-- Permissions: granular grants checked by security.can_perform().
+-- scope = 'organization' (per-org) or 'platform' (global, requires system admin).
+-- -----------------------------------------------------------------------------
+insert into app.permissions (code, name, description, scope, feature_id) values
+  -- Organization scope
+  ('fundraising.view',     'View campaigns',          'See campaigns for the current organization.',                                'organization', (select id from app.features where code = 'fundraising')),
+  ('fundraising.create',   'Create campaigns',        'Create new fundraising campaigns.',                                          'organization', (select id from app.features where code = 'fundraising')),
+  ('fundraising.update',   'Update campaigns',        'Edit existing fundraising campaigns.',                                        'organization', (select id from app.features where code = 'fundraising')),
+  ('fundraising.delete',   'Delete campaigns',        'Permanently remove fundraising campaigns.',                                   'organization', (select id from app.features where code = 'fundraising')),
+  ('fundraising.manage',  'Manage fundraising',      'Full fundraising permission set (view/create/update/delete).',               'organization', (select id from app.features where code = 'fundraising')),
+  ('organization.members.invite',           'Invite members',           'Send invitations to new members.',                'organization', (select id from app.features where code = 'organization_administration')),
+  ('organization.members.remove',           'Remove members',           'Remove members from the organization.',           'organization', (select id from app.features where code = 'organization_administration')),
+  ('organization.members.change_role',      'Change member roles',      'Change a member''s role.',                         'organization', (select id from app.features where code = 'organization_administration')),
+  ('organization.members.permissions.manage', 'Manage member permissions', 'Grant or revoke per-member permissions.',        'organization', (select id from app.features where code = 'organization_administration')),
+  -- Platform scope (require system admin)
+  ('system.organizations.approve',  'Approve organizations',  'Approve pending organization requests.',  'platform', (select id from app.features where code = 'platform_administration')),
+  ('system.organizations.reject',   'Reject organizations',   'Reject pending organization requests.',   'platform', (select id from app.features where code = 'platform_administration')),
+  ('system.organizations.suspend',  'Suspend organizations',  'Suspend active organizations.',           'platform', (select id from app.features where code = 'platform_administration')),
+  ('system.organizations.unsuspend','Unsuspend organizations','Reactivate suspended organizations.',     'platform', (select id from app.features where code = 'platform_administration')),
+  ('system.plans.manage',           'Manage plans',           'Create, update, or deactivate plans.',    'platform', (select id from app.features where code = 'platform_administration'))
+on conflict (code) do nothing;
+
+-- -----------------------------------------------------------------------------
+-- Subscription plans.
+-- -----------------------------------------------------------------------------
+insert into app.subscription_plans (code, name, description, price_minor, currency, billing_interval, is_active) values
+  ('free', 'Free',     'Read-only access to the organization.',     0,      'USD', 'month', true),
+  ('pro',  'Pro',      'Full fundraising and member management.',    2900,   'USD', 'month', true),
+  ('enterprise', 'Enterprise', 'Unlimited campaigns and priority support.', 9900, 'USD', 'month', true)
+on conflict (code) do nothing;
+
+-- -----------------------------------------------------------------------------
+-- Plan → Feature mapping.
+-- -----------------------------------------------------------------------------
+insert into app.plan_features (plan_id, feature_id)
+select sp.id, f.id
+from app.subscription_plans sp
+cross join app.features f
+where (sp.code, f.code) in (
+  ('free', 'fundraising'),       -- free can view/create campaigns
+  ('pro',  'fundraising'),
+  ('pro',  'organization_administration'),
+  ('enterprise', 'fundraising'),
+  ('enterprise', 'organization_administration'),
+  ('enterprise', 'platform_administration')
+)
+on conflict do nothing;
+
+-- -----------------------------------------------------------------------------
+-- System admin flag.
+-- A row in app.system_admins marks a user as a global administrator.
+-- Empty by default; promote users via scripts/bootstrap-admin.sh.
+-- -----------------------------------------------------------------------------
+-- (no rows inserted here on purpose; bootstrap script handles it)
+
+commit;
