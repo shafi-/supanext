@@ -1,343 +1,167 @@
-# Supabase Database Architecture
+# Supabase
 
-This directory contains the database migrations, edge functions, and configuration for the Supabase backend following a **function-first architecture**.
+Postgres schemas, migrations, RLS, and a function-first API surface live here. The frontend never queries tables directly — it calls `api.*` RPCs over PostgREST.
 
-## Architecture Overview
-
-This project implements a database-driven architecture where:
-
-- **All database operations go through functions** - No direct table access from client code
-- **Restrictive RLS by default** - All tables use "deny all" policies with function-based access
-- **Business logic encapsulated in PostgreSQL** - Complex rules live in database functions
-- **Selective RLS for complex filtering** - Where functions aren't ideal, targeted RLS policies
-- **Comprehensive audit logging** - All important actions tracked automatically
-
-## Philosophy: Database as Application Backend
-
-Instead of treating PostgreSQL as just data storage, we treat it as an application server that provides:
-
-1. **API-like Functions** - Each function acts like a well-defined API endpoint
-2. **Security by Default** - RLS carries authorization; callable functions are `SECURITY INVOKER` by default, with a short documented exception list
-3. **Data Integrity** - Constraints, triggers, and validation at the source
-4. **Single Source of Truth** - Business rules live in one place
-5. **Performance** - Complex operations happen where the data lives
-
-## Core Principles
-
-### 1. Function-First Access
-```sql
--- ❌ Never do this from client code:
-SELECT * FROM organizations WHERE id = 'xyz';
-
--- ✅ Always do this:
-SELECT * FROM get_organization('xyz');
-```
-
-### 2. Security Through Functions
-```sql
--- Functions run as the calling user (SECURITY INVOKER) —
--- RLS enforces authorization; functions add business validation:
-CREATE OR REPLACE FUNCTION update_organization(org_id UUID, ...)
-LANGUAGE plpgsql SECURITY INVOKER AS $$
-  -- Check permissions inside function
-  IF NOT can_perform('org:update', org_id) THEN
-    RAISE EXCEPTION 'Permission denied';
-  END IF;
-  -- Proceed with operation
-$$
-
--- SECURITY DEFINER is reserved for documented exceptions ONLY:
---   1. Triggers / auth handler (run outside user context)
---   2. RLS recursion anchors (is_system_admin, private.* helpers)
---   3. Anon pre-auth reads (validate_invite, get_public_org_by_slug)
---   4. Privileged-column writers with internal guards
---      (grant/revoke/bootstrap_system_admin)
-```
-
-### 3. Restrictive Default Policies
-```sql
--- All tables have "deny all" by default:
-CREATE POLICY "deny_all_organizations" ON organizations FOR ALL USING (false);
-
--- Permissive policies re-open exactly what functions need:
-CREATE POLICY "members_can_read" ON organizations FOR SELECT USING (
-  can_perform('org:read', id)
-);
--- Callable functions stay SECURITY INVOKER and resolve rows through RLS.
-```
-
-## Table Structure
-
-### Core Tables
-
-- **`profiles`** - Extends auth.users with additional user information
-- **`organizations`** - Teams, companies, workspaces for multi-tenancy
-- **`organization_members`** - Many-to-many user-organization relationships
-- **`roles`** - System and organization role definitions
-- **`audit_logs`** - Comprehensive activity tracking
-
-### Relationships
+## Layout
 
 ```
-auth.users → profiles (1:1)
-profiles → organization_members (1:N) 
-organizations → organization_members (1:N)
-organization_members → profiles (N:1)
-organization_members → organizations (N:1)
+supabase/
+├── config.toml              # Local Supabase CLI config
+├── migrations/              # Numbered SQL migrations (applied in order)
+├── seed.sql                 # Idempotent baseline data (features, permissions, plans)
+├── dev_helpers.sql          # Local-only debug helpers (never deployed)
+└── functions/               # Edge functions (if any)
 ```
 
-## Function Categories
-
-### User Profile Functions
-- `get_my_profile()` - Get current user's profile
-- `get_user_profile(user_id)` - Get another user's profile (with permission checks)
-- `update_my_profile(full_name, avatar_url, metadata)` - Update own profile
-
-### Organization Functions
-- `create_organization(name, slug, description, settings)` - Create new organization
-- `get_my_organizations()` - Get user's organizations
-- `get_organization(org_id)` - Get specific organization details
-- `update_organization(org_id, ...)` - Update organization (admin/owner only)
-- `delete_organization(org_id)` - Delete organization (owner only)
-
-### Organization Member Functions
-- `add_organization_member(org_id, user_email, role)` - Add member (admin/owner only)
-- `remove_organization_member(org_id, user_id)` - Remove member (admin/owner only)
-- `get_organization_members(org_id)` - Get organization members
-- `update_member_role(org_id, user_id, new_role)` - Change member role (admin/owner only)
-
-### Helper Functions
-- `is_member(user_id, org_id)` - Check if user is organization member
-- `is_admin_or_owner(user_id, org_id)` - Check if user has admin privileges
-- `get_user_role(user_id, org_id)` - Get user's role in organization
-- `is_system_admin(user_id)` - Check if user is system administrator
-
-### Audit Functions
-- `audit_action(user_id, org_id, action, resource_type, resource_id, metadata)` - Log audit event
-- `audit_table_changes()` - Trigger function for automatic change logging
-
-## Usage Examples
-
-### Creating an Organization
-
-```sql
--- From client code (TypeScript/JavaScript):
-const { data, error } = await supabase.rpc('create_organization', {
-  org_name: 'My Startup',
-  org_slug: 'my-startup',
-  org_description: 'A new venture',
-  org_settings: { theme: 'dark' }
-});
-```
-
-### Managing Organization Members
-
-```sql
--- Add a member:
-await supabase.rpc('add_organization_member', {
-  target_org_id: 'org-uuid',
-  target_user_email: 'user@example.com',
-  member_role: 'admin'
-});
-
--- Get members:
-await supabase.rpc('get_organization_members', {
-  target_org_id: 'org-uuid'
-});
-
--- Update role:
-await supabase.rpc('update_member_role', {
-  target_org_id: 'org-uuid',
-  target_user_id: 'user-uuid',
-  new_role: 'admin'
-});
-```
-
-### User Profile Operations
-
-```sql
-// Get current user profile:
-await supabase.rpc('get_my_profile');
-
-// Update own profile:
-await supabase.rpc('update_my_profile', {
-  new_full_name: 'John Doe',
-  new_avatar_url: 'https://example.com/avatar.jpg',
-  new_metadata: { preferences: { newsletter: true } }
-});
-```
-
-## Service Layer Integration
-
-Your service layer becomes thin wrappers around database functions:
-
-```typescript
-class OrganizationService extends BaseRepository {
-  async createOrganization(data: CreateOrganizationDto) {
-    return this.supabase.rpc('create_organization', {
-      org_name: data.name,
-      org_slug: data.slug,
-      org_description: data.description,
-      org_settings: data.settings
-    });
-  }
-
-  async addMember(orgId: string, email: string, role: string) {
-    return this.supabase.rpc('add_organization_member', {
-      target_org_id: orgId,
-      target_user_email: email,
-      member_role: role
-    });
-  }
-}
-```
-
-## Security Model
-
-### Authentication
-- Supabase Auth handles user authentication
-- `auth.uid()` provides the current user's ID in functions
-- User creation triggers automatic profile and default organization creation
-
-### Authorization
-- **Function-level**: Each function implements its own permission checks
-- **Helper functions**: `is_admin_or_owner()`, `is_member()` for common checks
-- **RAISE EXCEPTION**: For unauthorized access attempts
-
-### Audit Logging
-- Automatic logging of all important actions
-- Triggers on table changes for comprehensive tracking
-- IP addresses and user agents captured for security analysis
-
-## Development Workflow
-
-### Local Development
+## Common commands
 
 ```bash
-# Start Supabase local development
+# Start the local stack (Postgres + Auth + PostgREST + Studio).
 supabase start
 
-# Apply migrations
+# Apply all migrations + seed.sql against the local DB.
 supabase db reset
 
-# Access database directly
-psql 'postgresql://postgres:postgres@localhost:54322/postgres'
+# Create a new empty migration.
+supabase migration new <descriptive_name>
+# → writes supabase/migrations/<timestamp>_<descriptive_name>.sql
 
-# Generate TypeScript types from schema
-supabase gen types typescript > src/types/database.ts
-```
+# Diff current local DB against migrations/ → emit a new migration.
+supabase db diff -f <descriptive_name>
 
-### Migration Management
-
-```bash
-# Create new migration
-supabase migration new migration_name
-
-# Apply migrations locally
-supabase db reset
-
-# Push to remote
+# Push migrations to the linked remote project.
 supabase db push
 
-# Check migration status
+# Show migration status (local vs remote).
 supabase migration list
+
+# Regenerate TypeScript types from the local schema.
+#   Output is hand-edited in this repo (src/types/database.ts) — review
+#   the diff before committing; trim to public surface.
+supabase gen types typescript --local > client/src/types/database.ts
+
+# Open psql against the local DB.
+psql 'postgresql://postgres:postgres@localhost:54322/postgres'
+
+# Open Studio (GUI).
+#   http://127.0.0.1:54323
 ```
 
-### Testing Functions
+## Schemas at a glance
 
-```sql
--- Test function with specific user (development only):
-SET LOCAL request.jwt.claim.sub = 'user-uuid';
+| Schema | Owner | Purpose |
+|---|---|---|
+| `auth` | Supabase | `auth.users`, sessions. Never modified by our migrations. |
+| `app` | Template | Persistent state (ULID text PKs). |
+| `security` | Template | Auth primitives: `generate_ulid`, `is_system_admin`, `can_perform`, `token_digest`. |
+| `api` | Template | The only entry point the client calls. `SECURITY DEFINER`. |
 
-SELECT * FROM get_my_organizations();
+See `docs/architecture.md` for diagrams.
 
--- Test helper functions:
-SELECT is_admin_or_owner('user-uuid', 'org-uuid');
-SELECT get_user_role('user-uuid', 'org-uuid');
+## Adding a migration
+
+1. **Generate the file**:
+   ```bash
+   supabase migration new add_feature_foo
+   ```
+2. **Write SQL** using the existing patterns:
+   - Tables: `id text primary key default security.generate_ulid()`.
+   - FKs to `auth.users`: `user_id uuid not null references auth.users(id)`.
+   - FKs to our tables: `<col> text not null references app.<table>(id)`.
+   - New RPCs: `create or replace function api.<name>(...) returns <type> language plpgsql security definer set search_path = '' as $$ ... $$;`
+   - Grant: `grant execute on function api.<name>(<sig>) to authenticated;`
+3. **Reset locally** to apply from scratch:
+   ```bash
+   supabase db reset
+   ```
+4. **Regen types** if you added/changed columns or RPC signatures:
+   ```bash
+   supabase gen types typescript --local > client/src/types/database.ts
+   ```
+5. **Commit** the migration file (and any type changes) in a single commit.
+
+## Seeding data
+
+`supabase/seed.sql` runs automatically on every `supabase db reset`. It is idempotent (`on conflict do nothing`) and seeds:
+
+- 3 features (`fundraising`, `organization_administration`, `platform_administration`)
+- 14 permissions (organization + platform scope)
+- 3 plans (`free`, `pro`, `enterprise`)
+- Plan → feature mapping
+
+The first system admin is **not** seeded — use `scripts/bootstrap-admin.sh` (refuses to run against non-localhost).
+
+## Function-first access
+
+Clients only call `api.*` functions. The contract is:
+
+```ts
+// ✅ Correct
+const { data, error } = await supabase.rpc('create_campaign', {
+  p_org_id: orgId,
+  p_name: name,
+});
+
+// ❌ Forbidden — bypasses authorization
+const { data, error } = await supabase.from('fundraising_campaigns').insert(...);
 ```
 
-## Benefits of This Approach
+Direct `from()` calls are blocked by RLS deny-all policies on every `app.*` table; see `supabase/migrations/20240825000000_initial_migration.sql` for the policy declarations.
 
-### Compared to Traditional APIs
-- **Faster Development**: No HTTP layer, serialization, middleware
-- **Better Performance**: Direct data access, optimized queries
-- **Stronger Security**: Database-level enforcement, not application-level
-- **Easier Testing**: Test functions directly without HTTP calls
-- **Consistency**: Single source of truth for business rules
+## Authorization flow
 
-### Compared to Direct SQL Access
-- **Encapsulation**: Business logic hidden behind function interfaces
-- **Security**: No risk of clients bypassing business rules
-- **Maintainability**: Change implementation without breaking clients
-- **Validation**: Centralized input validation and error handling
-- **Auditability**: All operations go through controlled entry points
+Every `api.*` RPC gates itself with `security.can_perform(<code>, <org_id>)`. The check resolves in this order:
 
-## Performance Considerations
+1. Is the caller a system admin? → allow.
+2. Does `app.organization_member_permissions` grant the code to this user in this org? → allow.
+3. Does the org's active subscription include the feature mapped to this permission? → allow.
+4. Otherwise → `raise exception using errcode = '42501', message = 'Not authorized'`.
 
-### Optimization Strategies
-- **Indexes**: Added on frequently queried columns
-- **Views**: Pre-join common queries for efficiency
-- **Function Caching**: PostgreSQL caches query execution plans
-- **Connection Pooling**: Supabase manages connection pooling
+## Local dev helpers
 
-### Monitoring
-- Use Supabase dashboard to monitor function performance
-- Check `audit_logs` table for usage patterns
-- Optimize functions that show high execution times
+`supabase/dev_helpers.sql` exposes three functions that bypass authorization. They are:
 
-## Troubleshooting
+- Restricted to the `service_role` (revoked from `anon` and `authenticated`).
+- Excluded from `supabase db push` (not in `migrations/`).
+- Documented as local-only.
 
-### Common Issues
+Install locally with:
 
-**Permission denied errors:**
-- Check if user has proper role in organization
-- Verify user status is 'active' not 'invited' or 'suspended'
-- Ensure you're calling functions as authenticated user
+```bash
+docker exec -i supabase_db_supanext psql -U postgres -d postgres \
+  -f - < supabase/dev_helpers.sql
+```
 
-**Function not found:**
-- Ensure migrations have been applied: `supabase db reset`
-- Check function name spelling and parameters
-- Verify function was created successfully
+## Verifying a migration
 
-**RLS policy conflicts:**
-- Callable functions are `SECURITY INVOKER` — they resolve rows through RLS
-- `SECURITY DEFINER` is reserved for the documented exception classes only
-- Ensure RLS policies aren't too restrictive for intended access
+Before pushing:
 
-## Best Practices
+```bash
+# 1. Local reset applies from scratch.
+supabase db reset
 
-1. **Always use functions** - Never query tables directly from client code
-2. **Validate inputs** - Functions should validate all parameters
-3. **Use transactions** - For complex operations requiring atomicity
-4. **Return structured data** - Use views for consistent return types
-5. **Handle errors gracefully** - Provide clear error messages
-6. **Log important actions** - Use audit functions for compliance
-7. **Test thoroughly** - Test functions with various permission scenarios
-8. **Document functions** - Keep function documentation up to date
+# 2. Lint SQL (requires sqlfluff; optional).
+#    Skip if not installed.
 
-## Future Enhancements
+# 3. Spot-check with a service-role psql.
+psql 'postgresql://postgres:postgres@localhost:54322/postgres' -c \
+  "select proname from pg_proc where pronamespace = 'api'::regnamespace order by 1;"
 
-Potential additions to consider:
+# 4. Run frontend tests against the local DB.
+cd client && pnpm test:unit
+```
 
-- **Advanced Role System**: RBAC with granular permissions
-- **Organization Settings**: More sophisticated configuration options
-- **Usage Tracking**: API usage, storage, member count monitoring
-- **Subscription Management**: Integration with payment providers
-- **Advanced Audit**: Compliance logging, retention policies
-- **Performance Monitoring**: Built-in query performance tracking
+## Deploying to a remote project
 
-## Contributing
-
-When adding new features:
-
-1. Create database functions first, then application code
-2. Follow existing naming conventions and patterns
-3. Include proper authorization checks in functions
-4. Add audit logging for important operations
-5. Update views if return types change
-6. Test with different user roles and permissions
-7. Document new functions in this README
-
----
-
-**Note**: This architecture prioritizes security and maintainability over development speed for complex operations. For simple, user-owned data (like settings), selective direct RLS can be more appropriate.
+1. Link the project once: `supabase link --project-ref <ref>`.
+2. Apply migrations: `supabase db push`.
+3. Apply seed (only on first deploy, or when plan catalog changes):
+   ```bash
+   psql "$(supabase db remote get-uri)" -f supabase/seed.sql
+   ```
+4. Bootstrap the first system admin via the Supabase SQL editor:
+   ```sql
+   select api.grant_system_admin('<your-user-uuid>');
+   ```
+   (Or run `scripts/bootstrap-admin.sh` from your local machine if the script
+   supports remote mode — currently it does not.)
