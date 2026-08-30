@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { useState } from 'react'
+import { ROUTES } from '@/lib/routes'
 
 export interface AdminOrgRow {
   id: string
@@ -43,19 +44,25 @@ export function AdminDashboardView({
           <p className="text-2xl font-bold">{suspended}</p>
         </div>
       </div>
-      <Link href="/admin/orgs" className="text-blue-600 hover:underline">
+      <Link href={ROUTES.adminOrgs} className="text-blue-600 hover:underline">
         Manage Organizations
       </Link>
-      <Link href="/admin/plans" className="block text-blue-600 hover:underline">
+      <Link
+        href={ROUTES.adminPlans}
+        className="block text-blue-600 hover:underline"
+      >
         Subscription Plans
       </Link>
       <Link
-        href="/admin/subscriptions"
+        href={ROUTES.adminSubscriptions}
         className="block text-blue-600 hover:underline"
       >
         Organization Subscriptions
       </Link>
-      <Link href="/admin/audit" className="block text-blue-600 hover:underline">
+      <Link
+        href={ROUTES.adminAudit}
+        className="block text-blue-600 hover:underline"
+      >
         Audit Log
       </Link>
       <SystemAdminCard onRunSysAdmin={onRunSysAdmin} />

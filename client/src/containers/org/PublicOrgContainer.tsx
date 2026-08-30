@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRequiredParam } from '@/hooks/useQueryParam'
 import { organizationService } from '@/services/OrganizationService'
+import { ROUTES } from '@/lib/routes'
 import type { PublicOrgProfile } from '@/types/organization'
 import { PublicOrgView } from '@/components/org/PublicOrgView'
 
@@ -41,13 +42,13 @@ export function PublicOrgContainer() {
           </Link>
           <div className="flex items-center space-x-4">
             <Link
-              href="/auth/login"
+              href={ROUTES.login}
               className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
             >
               Sign In
             </Link>
             <Link
-              href="/auth/register"
+              href={ROUTES.register}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
             >
               Create Account

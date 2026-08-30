@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { ROUTES, orgDetail } from '@/lib/routes'
 
 interface NavProps {
   user: { email: string } | null
@@ -26,7 +27,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
             {user && (
               <div className="hidden gap-4 md:flex">
                 <Link
-                  href="/orgs"
+                  href={ROUTES.appOrgs}
                   className="text-gray-600 hover:text-gray-900"
                 >
                   Organizations
@@ -34,13 +35,13 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
                 {currentOrg && (
                   <>
                     <Link
-                      href={`/orgs?id=${currentOrg.id}`}
+                      href={orgDetail(currentOrg.id)}
                       className="text-gray-600 hover:text-gray-900"
                     >
                       Dashboard
                     </Link>
                     <Link
-                      href={`/orgs?id=${currentOrg.id}`}
+                      href={orgDetail(currentOrg.id)}
                       className="text-gray-600 hover:text-gray-900"
                     >
                       Members
@@ -49,7 +50,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
                 )}
                 {isSystemAdmin && (
                   <Link
-                    href="/admin"
+                    href={ROUTES.admin}
                     className="text-gray-600 hover:text-gray-900"
                   >
                     Admin
@@ -62,7 +63,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
             {user ? (
               <>
                 <Link
-                  href="/profile"
+                  href={ROUTES.appProfile}
                   className="text-gray-600 hover:text-gray-900"
                 >
                   {user.email}
@@ -70,7 +71,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
                 <button
                   onClick={() => {
                     onSignOut()
-                    router.push('/auth/login/')
+                    router.push(ROUTES.login)
                   }}
                   className="text-gray-600 hover:text-gray-900"
                 >
@@ -79,7 +80,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
               </>
             ) : (
               <Link
-                href="/auth/login"
+                href={ROUTES.login}
                 className="text-gray-600 hover:text-gray-900"
               >
                 Sign in
@@ -100,7 +101,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
             {user && (
               <>
                 <Link
-                  href="/orgs"
+                  href={ROUTES.appOrgs}
                   className="block py-2"
                   onClick={() => setMobileOpen(false)}
                 >
@@ -108,7 +109,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
                 </Link>
                 {currentOrg && (
                   <Link
-                    href={`/orgs?id=${currentOrg.id}`}
+                    href={orgDetail(currentOrg.id)}
                     className="block py-2"
                     onClick={() => setMobileOpen(false)}
                   >
@@ -117,7 +118,7 @@ export function Nav({ user, currentOrg, isSystemAdmin, onSignOut }: NavProps) {
                 )}
                 {isSystemAdmin && (
                   <Link
-                    href="/admin"
+                    href={ROUTES.admin}
                     className="block py-2"
                     onClick={() => setMobileOpen(false)}
                   >

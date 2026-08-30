@@ -11,27 +11,27 @@ async function registerOrLogin(page: import('@playwright/test').Page) {
   await page.locator('#confirmPassword').fill(TEST_PASSWORD)
   await page.getByRole('button', { name: 'Create Account' }).click()
   try {
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 10000 })
   } catch {
     await page.goto('/auth/login/')
     await page.locator('#email').fill(TEST_EMAIL)
     await page.locator('#password').fill(TEST_PASSWORD)
     await page.getByRole('button', { name: 'Sign In' }).click()
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 10000 })
   }
 }
 
 test.describe('Protected Pages', () => {
   test.describe('Profile Page', () => {
     test('redirects to login when not authenticated', async ({ page }) => {
-      await page.goto('/profile/')
+      await page.goto('/app/profile/')
       await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10000 })
     })
 
     test('displays user email when authenticated', async ({ page }) => {
       await registerOrLogin(page)
 
-      await page.goto('/profile/')
+      await page.goto('/app/profile/')
       await expect(page.locator('h1')).toContainText('Profile')
       await expect(page.getByRole('paragraph').filter({ hasText: TEST_EMAIL })).toBeVisible()
     })
@@ -39,9 +39,9 @@ test.describe('Protected Pages', () => {
 
   test.describe('Orgs Page', () => {
     test('redirects to login when not authenticated', async ({ page }) => {
-      await page.goto('/orgs/')
+      await page.goto('/app/orgs/')
       const url = page.url()
-      const isOnOrgs = url.includes('/orgs/')
+      const isOnOrgs = url.includes('/app/orgs/')
       const isOnLogin = url.includes('/auth/login/')
       expect(isOnOrgs || isOnLogin).toBeTruthy()
     })
@@ -49,7 +49,7 @@ test.describe('Protected Pages', () => {
     test('loads orgs page when authenticated', async ({ page }) => {
       await registerOrLogin(page)
 
-      await page.goto('/orgs/')
+      await page.goto('/app/orgs/')
       await expect(page.locator('body')).toBeVisible()
     })
   })

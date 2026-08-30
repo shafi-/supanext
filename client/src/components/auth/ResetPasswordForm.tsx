@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ROUTES } from '@/lib/routes'
 import { Captcha } from '@/components/auth/Captcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,7 +48,7 @@ export function ResetPasswordForm({
         <p className="text-gray-600">
           We sent a password reset link to {email}
         </p>
-        <Link href="/auth/login" className="text-blue-600 hover:underline">
+        <Link href={ROUTES.login} className="text-blue-600 hover:underline">
           Back to login
         </Link>
       </div>
@@ -62,7 +63,7 @@ export function ResetPasswordForm({
           Your password has been changed successfully.
         </p>
         <Link
-          href="/dashboard"
+          href={ROUTES.appDashboard}
           className="inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
           Go to dashboard

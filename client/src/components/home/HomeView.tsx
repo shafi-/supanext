@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ROUTES } from '@/lib/routes'
 
 interface HomeViewProps {
   user: { email: string } | null
@@ -29,13 +30,13 @@ export function HomeView({ user, loading }: HomeViewProps) {
               {user ? (
                 <>
                   <Link
-                    href="/dashboard"
+                    href={ROUTES.appDashboard}
                     className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                   >
                     Dashboard
                   </Link>
                   <Link
-                    href="/profile"
+                    href={ROUTES.appProfile}
                     className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                   >
                     Profile
@@ -44,13 +45,13 @@ export function HomeView({ user, loading }: HomeViewProps) {
               ) : (
                 <>
                   <Link
-                    href="/auth/login"
+                    href={ROUTES.login}
                     className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                   >
                     Sign In
                   </Link>
                   <Link
-                    href="/auth/register"
+                    href={ROUTES.register}
                     className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                   >
                     Get Started
@@ -79,7 +80,7 @@ export function HomeView({ user, loading }: HomeViewProps) {
                   Welcome back, {user.email}!
                 </p>
                 <Link
-                  href="/dashboard"
+                  href={ROUTES.appDashboard}
                   className="inline-block rounded-md bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700"
                 >
                   Go to Dashboard
@@ -88,13 +89,13 @@ export function HomeView({ user, loading }: HomeViewProps) {
             ) : (
               <div className="flex justify-center space-x-4">
                 <Link
-                  href="/auth/register"
+                  href={ROUTES.register}
                   className="inline-block rounded-md bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700"
                 >
                   Get Started
                 </Link>
                 <Link
-                  href="/auth/login"
+                  href={ROUTES.login}
                   className="inline-block rounded-md border border-indigo-600 bg-white px-8 py-3 text-base font-medium text-indigo-600 hover:bg-indigo-50"
                 >
                   Sign In

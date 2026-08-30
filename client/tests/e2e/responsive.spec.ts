@@ -43,7 +43,7 @@ test.describe('Responsive Design', () => {
       await page.locator('#password').fill(testPassword)
       await page.locator('#confirmPassword').fill(testPassword)
       await page.getByRole('button', { name: 'Create Account' }).click()
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+      await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 
       await expect(page.locator('text=My Organizations')).toBeVisible()
       await expect(page.locator('text=Profile Settings')).toBeVisible()

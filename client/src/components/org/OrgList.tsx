@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { orgDetail } from '@/lib/routes'
 import type { SessionOrganization } from '@/services/OrganizationService'
 import { OrgCard } from './OrgCard'
 
@@ -17,7 +18,7 @@ export function OrgList({ organizations, loading }: OrgListProps) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {organizations.map(org => (
-            <Link key={org.id} href={`/orgs?id=${org.id}`}>
+            <Link key={org.id} href={orgDetail(org.id)}>
               <OrgCard org={org} />
             </Link>
           ))}

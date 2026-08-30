@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ROUTES } from '@/lib/routes'
 import type { AuthUser } from '@/types/auth'
 import type { OrgStats, SessionOrganization } from '@/types/organization'
 import { Button } from '@/components/ui/button'
@@ -34,13 +35,13 @@ export function DashboardView({
             </div>
             <div className="flex items-center space-x-4">
               <Link
-                href="/dashboard"
+                href={ROUTES.appDashboard}
                 className="rounded-md px-3 py-2 text-sm font-medium text-gray-900"
               >
                 Dashboard
               </Link>
               <Link
-                href="/profile"
+                href={ROUTES.appProfile}
                 className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
               >
                 Profile
@@ -72,7 +73,7 @@ export function DashboardView({
               Manage your organizations and team members.
             </p>
             <Link
-              href="/orgs"
+              href={ROUTES.appOrgs}
               className="font-medium text-indigo-600 hover:text-indigo-700"
             >
               View Organizations →
@@ -87,7 +88,7 @@ export function DashboardView({
               Update your profile information and preferences.
             </p>
             <Link
-              href="/profile"
+              href={ROUTES.appProfile}
               className="font-medium text-indigo-600 hover:text-indigo-700"
             >
               Update Profile →
@@ -102,7 +103,10 @@ export function DashboardView({
           {!currentOrg ? (
             <p className="text-gray-500">
               Select an organization to see stats.{' '}
-              <Link href="/orgs" className="text-indigo-600 hover:underline">
+              <Link
+                href={ROUTES.appOrgs}
+                className="text-indigo-600 hover:underline"
+              >
                 Go to Organizations →
               </Link>
             </p>

@@ -119,7 +119,7 @@ test('seed: identities, sysadmin bootstrap (idempotent), sessions', async () => 
 
 test('org request via UI lands as pending', async ({ page }) => {
   useSession(page, adminSession)
-  await page.goto('/orgs')
+  await page.goto('/app/orgs')
   await page.fill('input[placeholder="Organization name"]', ORG_NAME)
   await page.fill('input[placeholder="slug"]', SLUG)
   await page.click('button:has-text("Create")')
@@ -140,7 +140,7 @@ test('ops approve + subscribe → UI shows active', async ({ page }) => {
   })
 
   useSession(page, adminSession)
-  await page.goto(`/orgs?id=${orgId}`)
+  await page.goto(`/app/orgs/?id=${orgId}`)
   await expect(page.locator('span.rounded-full', { hasText: 'active' }).first()).toBeVisible({
     timeout: 10000,
   })
@@ -149,7 +149,7 @@ test('ops approve + subscribe → UI shows active', async ({ page }) => {
 test('invitation minted; anonymous preview is warm', async ({ page }) => {
   const orgId = psql(`select id::text from app.organizations where slug='${SLUG}'`)
   useSession(page, adminSession)
-  await page.goto(`/orgs?id=${orgId}`)
+  await page.goto(`/app/orgs/?id=${orgId}`)
   await page.click('button:has-text("Invitations")')
   await page.fill('input[type="email"]', MEMBER.email)
   await page.click('button:has-text("Invite")')
@@ -178,13 +178,13 @@ test('member accepts invitation through the UI', async ({ page }) => {
   useSession(page, memberSession)
   await page.goto(globalThis.__inviteLink!)
   await page.click('button:has-text("Accept Invitation")')
-  await page.waitForURL('**/orgs**', { timeout: 15000 })
+  await page.waitForURL('**/app/orgs**', { timeout: 15000 })
 })
 
 test('entitlement-gated campaigns CRUD works for subscribed org', async ({ page }) => {
   const orgId = psql(`select id::text from app.organizations where slug='${SLUG}'`)
   useSession(page, adminSession)
-  await page.goto(`/orgs?id=${orgId}`)
+  await page.goto(`/app/orgs/?id=${orgId}`)
   await expect(page.getByRole('button', { name: 'Campaigns' })).toBeVisible()
   await page.click('button:has-text("Campaigns")')
   await page.click('button:has-text("New Campaign")')

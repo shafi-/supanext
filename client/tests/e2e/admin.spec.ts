@@ -10,7 +10,7 @@ async function setupSystemAdmin(page: import('@playwright/test').Page) {
   await page.locator('#password').fill(ADMIN_PASSWORD)
   await page.locator('#confirmPassword').fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Create Account' }).click()
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+  await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 
   const token = await page.evaluate(() => {
     const key = Object.keys(localStorage).find(k => k.endsWith('-auth-token'))
@@ -55,7 +55,7 @@ test.describe.serial('Admin Pages', () => {
     await page.locator('#email').fill(ADMIN_EMAIL)
     await page.locator('#password').fill(ADMIN_PASSWORD)
     await page.getByRole('button', { name: 'Sign In' }).click()
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 
     await page.goto('/admin/', { waitUntil: 'networkidle' })
     const h1Text = await page.locator('h1').textContent()
@@ -69,7 +69,7 @@ test.describe.serial('Admin Pages', () => {
     await page.locator('#email').fill(ADMIN_EMAIL)
     await page.locator('#password').fill(ADMIN_PASSWORD)
     await page.getByRole('button', { name: 'Sign In' }).click()
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 
     await page.goto('/admin/', { waitUntil: 'networkidle' })
     const h1Text = await page.locator('h1').textContent()
@@ -84,7 +84,7 @@ test.describe.serial('Admin Pages', () => {
     await page.locator('#email').fill(ADMIN_EMAIL)
     await page.locator('#password').fill(ADMIN_PASSWORD)
     await page.getByRole('button', { name: 'Sign In' }).click()
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 
     await page.goto('/admin/orgs/', { waitUntil: 'networkidle' })
     const h1Text = await page.locator('h1').textContent()

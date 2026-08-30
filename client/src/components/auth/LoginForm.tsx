@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ROUTES } from '@/lib/routes'
 import { Captcha } from '@/components/auth/Captcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -81,7 +82,7 @@ export function LoginForm({
             </div>
 
             <Link
-              href="/auth/reset-password"
+              href={ROUTES.resetPassword}
               className="text-sm text-indigo-600 hover:text-indigo-500"
             >
               Forgot password?
@@ -103,7 +104,7 @@ export function LoginForm({
           <p className="text-sm text-gray-600">
             Don&apos;t have an account?{' '}
             <Link
-              href="/auth/register"
+              href={ROUTES.register}
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
               Sign up
