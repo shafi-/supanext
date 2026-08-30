@@ -60,6 +60,7 @@ export const Rpc = {
     FindUserByEmail: 'find_user_id_by_email' satisfies DbFunction,
     ListAllOrgs: 'list_all_organizations' satisfies DbFunction,
     ListPlans: 'list_plans' satisfies DbFunction,
+    ListAuditLog: 'list_audit_log' satisfies DbFunction,
   },
   SystemAdmin: {
     Bootstrap: 'bootstrap_system_admin' satisfies DbFunction,

@@ -134,6 +134,11 @@ describe('contract: service → RPC arg mapping', () => {
       rpcWasCalledWith('list_plans', { p_limit: 20, p_cursor: undefined })
     })
 
+    it('listAuditLog', async () => {
+      await adminService.listAuditLog({ limit: 25 })
+      rpcWasCalledWith('list_audit_log', { p_limit: 25, p_cursor: undefined })
+    })
+
     it('createPlan', async () => {
       await adminService.createPlan({
         code: 'pro', name: 'Pro', description: 'd',

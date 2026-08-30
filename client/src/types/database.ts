@@ -83,6 +83,7 @@ export type Database = {
         Returns: Json
       }
       list_all_organizations: { Args: { p_limit?: number }; Returns: Json }
+      list_audit_log: { Args: { p_limit?: number; p_cursor?: string }; Returns: Json }
       list_campaigns: { Args: { p_org_id?: string }; Returns: Json }
       list_plans: { Args: never; Returns: Json }
       list_public_organizations: { Args: { p_limit?: number }; Returns: Json }

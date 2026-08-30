@@ -1615,6 +1615,52 @@ begin
 end;
 $$;
 
+-- Sysadmin-only audit log listing. Cursor on id (bigint) cast to text.
+-- Joins auth.users and app.profiles to surface actor email + display_name.
+create or replace function api.list_audit_log(
+  p_limit int default 50,
+  p_cursor text default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit int := least(greatest(coalesce(p_limit, 50), 1), 200);
+  v_cursor_bigint bigint := case when p_cursor ~ '^[0-9]+$' then p_cursor::bigint else null end;
+  v_rows jsonb;
+begin
+  if not security.is_system_admin() then
+    raise exception using errcode = '42501', message = 'Not authorized';
+  end if;
+
+  select coalesce(jsonb_agg(t), '[]'::jsonb) into v_rows
+  from (
+    select
+      al.id::text as id,
+      al.occurred_at,
+      al.actor_user_id::text as actor_user_id,
+      coalesce(u.email, '') as actor_email,
+      coalesce(p.display_name, '') as actor_display_name,
+      al.organization_id,
+      al.action,
+      al.entity_type,
+      al.entity_id,
+      al.metadata
+    from app.audit_log al
+    left join auth.users u on u.id = al.actor_user_id
+    left join app.profiles p on p.id = al.actor_user_id
+    where (v_cursor_bigint is null or al.id < v_cursor_bigint)
+    order by al.id desc
+    limit v_limit
+  ) t;
+
+  return v_rows;
+end;
+$$;
+
 -- Sysadmin-only: resolve a user id from email (admin management UI).
 create or replace function api.find_user_id_by_email(p_email text)
 returns text
@@ -2021,6 +2067,7 @@ grant execute on function api.list_public_organizations(int) to anon, authentica
 
 grant execute on function api.find_user_id_by_email(text) to authenticated;
 grant execute on function api.list_all_organizations(int) to authenticated;
+grant execute on function api.list_audit_log(int, text) to authenticated;
 grant execute on function api.list_plans() to authenticated;
 grant execute on function api.get_session_context() to authenticated;
 grant execute on function api.set_active_organization(text) to authenticated;
