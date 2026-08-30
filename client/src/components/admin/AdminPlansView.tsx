@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
+import { ROUTES } from '@/lib/routes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -230,7 +231,7 @@ export function AdminPlansView({
         </table>
       </div>
       <Link
-        href="/admin"
+        href={ROUTES.admin}
         className="inline-block text-blue-600 hover:underline"
       >
         ← Admin home

@@ -39,9 +39,15 @@ Accurate snapshot of this template's current state.
   `useQueryParam` (provides `useRequiredParam` + `isUuid`/`isInviteToken`)
 - API contract tests validate every RPC function name + parameter mapping
   between frontend services and `types/database.ts`
-- Pages: landing, dashboard, invite acceptance, profile, admin (users,
-  plans, subscriptions, audit log), auth (login/register/reset-password),
-  about, privacy
+- Pages: landing, dashboard (`/app/dashboard/`), profile
+  (`/app/profile/`), invite acceptance, admin (users, plans,
+  subscriptions, audit log under `/admin/*`), auth
+  (login/register/reset-password under `/auth/*`), about, privacy
+- Route layout: public pages live at root; auth-gated user pages under
+  `/app/*`; system-admin pages under `/admin/*`. All routes are
+  centralized in `client/src/lib/routes.ts` (`ROUTES` constant +
+  `DEFAULT_POST_LOGIN`); components reference `ROUTES.*` rather than
+  hardcoding URLs
 - Tests: Vitest unit + contract tests (`client/tests/unit/`), RLS
   integration tests (`client/tests/integration/`), Playwright E2E
   (`client/tests/e2e/`)

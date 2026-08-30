@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { isCaptchaEnabled } from '@/lib/captcha'
+import { DEFAULT_POST_LOGIN } from '@/lib/routes'
 import { RegisterForm } from '@/components/auth/RegisterForm'
 
 /** Only allow relative in-app redirect targets (no open redirect). */
 function safeNextPath(raw: string | null): string {
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/dashboard'
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//'))
+    return DEFAULT_POST_LOGIN
   return raw
 }
 

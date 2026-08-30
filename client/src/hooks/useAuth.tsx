@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseManager } from '@/lib/supabase'
+import { ROUTES } from '@/lib/routes'
 import type { AuthState } from '@/types'
 
 interface AuthContextType extends AuthState {
@@ -159,7 +160,7 @@ export function useRequireAuth() {
 
   useEffect(() => {
     if (!auth.loading && !auth.user) {
-      router.push('/auth/login/')
+      router.push(ROUTES.login)
     }
   }, [auth.loading, auth.user, router])
 

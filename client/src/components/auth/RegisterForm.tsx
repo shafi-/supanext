@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ROUTES } from '@/lib/routes'
 import { Captcha } from '@/components/auth/Captcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -123,7 +124,7 @@ export function RegisterForm({
           <p className="text-sm text-gray-600">
             Already have an account?{' '}
             <Link
-              href="/auth/login"
+              href={ROUTES.login}
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
               Sign in

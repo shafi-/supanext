@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { useState } from 'react'
+import { ROUTES } from '@/lib/routes'
 
 interface AdminDashboardViewProps {
   userCount: number
@@ -28,19 +29,25 @@ export function AdminDashboardView({
           <p className="text-2xl font-bold">{subscriptionCount}</p>
         </div>
       </div>
-      <Link href="/admin/users" className="text-blue-600 hover:underline">
+      <Link href={ROUTES.adminUsers} className="text-blue-600 hover:underline">
         Manage Users
       </Link>
-      <Link href="/admin/plans" className="block text-blue-600 hover:underline">
+      <Link
+        href={ROUTES.adminPlans}
+        className="block text-blue-600 hover:underline"
+      >
         Subscription Plans
       </Link>
       <Link
-        href="/admin/subscriptions"
+        href={ROUTES.adminSubscriptions}
         className="block text-blue-600 hover:underline"
       >
         User Subscriptions
       </Link>
-      <Link href="/admin/audit" className="block text-blue-600 hover:underline">
+      <Link
+        href={ROUTES.adminAudit}
+        className="block text-blue-600 hover:underline"
+      >
         Audit Log
       </Link>
       <SystemAdminCard onRunSysAdmin={onRunSysAdmin} />

@@ -53,7 +53,7 @@ test.describe('Auth Flow', () => {
       await page.locator('#confirmPassword').fill(TEST_PASSWORD)
       await page.getByRole('button', { name: 'Create Account' }).click()
 
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+      await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
     })
   })
 
@@ -96,7 +96,7 @@ test.describe('Auth Flow', () => {
       await page.locator('#password').fill(TEST_PASSWORD)
       await page.locator('#confirmPassword').fill(TEST_PASSWORD)
       await page.getByRole('button', { name: 'Create Account' }).click()
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+      await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 
       await page.getByRole('button', { name: 'Sign Out' }).click()
       await expect(page).toHaveURL(/\/auth\/login\//, { timeout: 10000 })
@@ -104,7 +104,7 @@ test.describe('Auth Flow', () => {
       await page.locator('#email').fill(loginEmail)
       await page.locator('#password').fill(TEST_PASSWORD)
       await page.getByRole('button', { name: 'Sign In' }).click()
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+      await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
     })
   })
 

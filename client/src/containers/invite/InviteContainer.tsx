@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useRequiredParam, isInviteToken } from '@/hooks/useQueryParam'
 import { inviteService } from '@/services/InviteService'
 import { useAuth } from '@/hooks/useAuth'
+import { ROUTES } from '@/lib/routes'
 import { InviteView, type InviteStatus } from '@/components/invite/InviteView'
 
 export function InviteContainer() {
@@ -61,7 +62,7 @@ export function InviteContainer() {
       return
     }
     setStatus('accepted')
-    setTimeout(() => router.push('/dashboard'), 2000)
+    setTimeout(() => router.push(ROUTES.appDashboard), 2000)
   }
 
   return (

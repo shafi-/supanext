@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { ROUTES } from '@/lib/routes'
 
 interface NavProps {
   user: { email: string } | null
@@ -25,14 +26,14 @@ export function Nav({ user, isSystemAdmin, onSignOut }: NavProps) {
             {user && (
               <div className="hidden gap-4 md:flex">
                 <Link
-                  href="/dashboard"
+                  href={ROUTES.appDashboard}
                   className="text-gray-600 hover:text-gray-900"
                 >
                   Dashboard
                 </Link>
                 {isSystemAdmin && (
                   <Link
-                    href="/admin"
+                    href={ROUTES.admin}
                     className="text-gray-600 hover:text-gray-900"
                   >
                     Admin
@@ -45,7 +46,7 @@ export function Nav({ user, isSystemAdmin, onSignOut }: NavProps) {
             {user ? (
               <>
                 <Link
-                  href="/profile"
+                  href={ROUTES.appProfile}
                   className="text-gray-600 hover:text-gray-900"
                 >
                   {user.email}
@@ -53,7 +54,7 @@ export function Nav({ user, isSystemAdmin, onSignOut }: NavProps) {
                 <button
                   onClick={() => {
                     onSignOut()
-                    router.push('/auth/login/')
+                    router.push(ROUTES.login)
                   }}
                   className="text-gray-600 hover:text-gray-900"
                 >
@@ -62,7 +63,7 @@ export function Nav({ user, isSystemAdmin, onSignOut }: NavProps) {
               </>
             ) : (
               <Link
-                href="/auth/login"
+                href={ROUTES.login}
                 className="text-gray-600 hover:text-gray-900"
               >
                 Sign in
@@ -83,7 +84,7 @@ export function Nav({ user, isSystemAdmin, onSignOut }: NavProps) {
             {user && (
               <>
                 <Link
-                  href="/dashboard"
+                  href={ROUTES.appDashboard}
                   className="block py-2"
                   onClick={() => setMobileOpen(false)}
                 >
@@ -91,7 +92,7 @@ export function Nav({ user, isSystemAdmin, onSignOut }: NavProps) {
                 </Link>
                 {isSystemAdmin && (
                   <Link
-                    href="/admin"
+                    href={ROUTES.admin}
                     className="block py-2"
                     onClick={() => setMobileOpen(false)}
                   >

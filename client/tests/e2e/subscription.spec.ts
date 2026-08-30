@@ -13,7 +13,7 @@ async function createSystemAdmin(page: import('@playwright/test').Page) {
   await page.locator('#password').fill(ADMIN_PASSWORD)
   await page.locator('#confirmPassword').fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Create Account' }).click()
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+  await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 
   // Get user ID from auth token
   const userId = await page.evaluate(() => {
@@ -48,7 +48,7 @@ async function createSystemAdmin(page: import('@playwright/test').Page) {
 
   // Reload to pick up the change
   await page.reload()
-  await page.waitForURL(/\/dashboard/)
+  await page.waitForURL(/\/app\/dashboard/)
 }
 
 async function loginAsAdmin(page: import('@playwright/test').Page) {
@@ -56,7 +56,7 @@ async function loginAsAdmin(page: import('@playwright/test').Page) {
   await page.locator('#email').fill(ADMIN_EMAIL)
   await page.locator('#password').fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Sign In' }).click()
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+  await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15000 })
 }
 
 test.describe.serial('Subscription Management', () => {
