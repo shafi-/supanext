@@ -47,29 +47,29 @@ test.describe.serial('Public Org Page', () => {
   })
 
   test('public page shows org info by slug', async ({ page }) => {
-    await page.goto(`/orgs/public/?slug=${testSlug}`, { waitUntil: 'networkidle' })
+    await page.goto(`/org/?slug=${testSlug}`, { waitUntil: 'networkidle' })
     await expect(page.locator('h1')).toBeVisible({ timeout: 10000 })
     await expect(page.locator(`text=${testSlug}`)).toBeVisible()
   })
 
   test('public page shows Sign In and Create Account', async ({ page }) => {
-    await page.goto(`/orgs/public/?slug=${testSlug}`, { waitUntil: 'networkidle' })
+    await page.goto(`/org/?slug=${testSlug}`, { waitUntil: 'networkidle' })
     await expect(page.getByRole('link', { name: 'Sign In' })).toBeVisible({ timeout: 10000 })
     await expect(page.getByRole('link', { name: 'Create Account' })).toBeVisible()
   })
 
   test('public page shows created date', async ({ page }) => {
-    await page.goto(`/orgs/public/?slug=${testSlug}`, { waitUntil: 'networkidle' })
+    await page.goto(`/org/?slug=${testSlug}`, { waitUntil: 'networkidle' })
     await expect(page.locator('text=Created')).toBeVisible({ timeout: 10000 })
   })
 
   test('shows not found for invalid slug', async ({ page }) => {
-    await page.goto('/orgs/public/?slug=nonexistent-slug-12345', { waitUntil: 'networkidle' })
+    await page.goto('/org/?slug=nonexistent-slug-12345', { waitUntil: 'networkidle' })
     await expect(page.locator('h1:has-text("Organization Not Found")')).toBeVisible({ timeout: 10000 })
   })
 
   test('shows not found for empty slug', async ({ page }) => {
-    await page.goto('/orgs/public/', { waitUntil: 'networkidle' })
+    await page.goto('/org/', { waitUntil: 'networkidle' })
     await expect(page.locator('h1:has-text("Organization Not Found")')).toBeVisible({ timeout: 10000 })
   })
 })

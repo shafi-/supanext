@@ -28,7 +28,7 @@ export const ROUTES = {
   invite: '/invite/',
 
   // Public — public org page (visible to anyone with the link)
-  publicOrg: '/orgs/public/',
+  publicOrg: '/org/',
 
   // App — auth-gated user pages
   appDashboard: '/app/dashboard/',
