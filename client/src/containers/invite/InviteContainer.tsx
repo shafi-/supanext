@@ -46,7 +46,9 @@ export function InviteContainer() {
       setStatus('valid')
     }
     validate()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [token])
 
   const handleAccept = async () => {

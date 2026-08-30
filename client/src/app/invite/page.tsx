@@ -9,7 +9,9 @@ export default function InvitePage() {
     <Suspense
       fallback={
         <AppLayout>
-          <div className="max-w-md mx-auto text-center py-12 text-gray-500">Loading...</div>
+          <div className="mx-auto max-w-md py-12 text-center text-gray-500">
+            Loading...
+          </div>
         </AppLayout>
       }
     >

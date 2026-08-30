@@ -68,15 +68,22 @@ export class AdminService extends BaseRepository {
   }
 
   async findUserIdByEmail(email: string): ServiceData<string | null> {
-    return this.callRpc<string | null>(Rpc.Admin.FindUserByEmail, { p_email: email })
+    return this.callRpc<string | null>(Rpc.Admin.FindUserByEmail, {
+      p_email: email,
+    })
   }
 
   // -- subscription management -------------------------------------------------
-  async listAllSubscriptions(params?: PaginationParams): ServiceData<AdminSubscriptionRow[]> {
-    return this.callRpc<AdminSubscriptionRow[]>(Rpc.Admin.ListAllSubscriptions, {
-      p_limit: params?.limit ?? 20,
-      p_cursor: params?.cursor,
-    })
+  async listAllSubscriptions(
+    params?: PaginationParams
+  ): ServiceData<AdminSubscriptionRow[]> {
+    return this.callRpc<AdminSubscriptionRow[]>(
+      Rpc.Admin.ListAllSubscriptions,
+      {
+        p_limit: params?.limit ?? 20,
+        p_cursor: params?.cursor,
+      }
+    )
   }
 
   async assignSubscription(
@@ -96,7 +103,9 @@ export class AdminService extends BaseRepository {
   }
 
   async deactivateSubscription(userId: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Subscription.Deactivate, { p_user_id: userId })
+    return this.callRpc<void>(Rpc.Subscription.Deactivate, {
+      p_user_id: userId,
+    })
   }
 
   // -- plan management ---------------------------------------------------------
@@ -132,7 +141,11 @@ export class AdminService extends BaseRepository {
     })
   }
 
-  async setPlanFeature(planId: string, featureCode: string, enabled: boolean): ServiceData<void> {
+  async setPlanFeature(
+    planId: string,
+    featureCode: string,
+    enabled: boolean
+  ): ServiceData<void> {
     return this.callRpc<void>(Rpc.Plan.SetFeature, {
       p_plan_id: planId,
       p_feature_code: featureCode,

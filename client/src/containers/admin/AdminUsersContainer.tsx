@@ -18,7 +18,7 @@ export default function AdminUsersContainer() {
     loadMore,
     refresh,
   } = usePaginatedList<AdminUserRow>({
-    fetcher: useCallback((params) => adminService.listAllUsers(params), []),
+    fetcher: useCallback(params => adminService.listAllUsers(params), []),
     enabled: isSystemAdmin,
     cursorField: 'id',
   })
@@ -38,10 +38,15 @@ export default function AdminUsersContainer() {
 
   if (!isSystemAdmin) {
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-        <p className="mt-2 text-gray-600">You don&apos;t have permission to access this page.</p>
-        <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">
+        <p className="mt-2 text-gray-600">
+          You don&apos;t have permission to access this page.
+        </p>
+        <Link
+          href="/"
+          className="mt-4 inline-block text-blue-600 hover:underline"
+        >
           Back to home
         </Link>
       </div>
@@ -56,8 +61,8 @@ export default function AdminUsersContainer() {
       error={error}
       hasMore={hasMore}
       onLoadMore={loadMore}
-      onGrantAdmin={(id) => act(() => adminService.grantSystemAdmin(id))}
-      onRevokeAdmin={(id) => act(() => adminService.revokeSystemAdmin(id))}
+      onGrantAdmin={id => act(() => adminService.grantSystemAdmin(id))}
+      onRevokeAdmin={id => act(() => adminService.revokeSystemAdmin(id))}
     />
   )
 }

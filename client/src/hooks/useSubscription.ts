@@ -1,10 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { subscriptionService, type CurrentSubscription } from '@/services/SubscriptionService'
+import {
+  subscriptionService,
+  type CurrentSubscription,
+} from '@/services/SubscriptionService'
 
 export function useSubscription() {
-  const [subscription, setSubscription] = useState<CurrentSubscription | null>(null)
+  const [subscription, setSubscription] = useState<CurrentSubscription | null>(
+    null
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,7 +26,8 @@ export function useSubscription() {
   }, [refresh])
 
   const hasFeature = useCallback(
-    (featureCode: string) => subscription?.features?.includes(featureCode) ?? false,
+    (featureCode: string) =>
+      subscription?.features?.includes(featureCode) ?? false,
     [subscription]
   )
 

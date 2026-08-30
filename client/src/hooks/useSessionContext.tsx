@@ -29,7 +29,11 @@ class SessionService extends BaseRepository {
 
 const sessionService = new SessionService()
 
-export function SessionContextProvider({ children }: { children: React.ReactNode }) {
+export function SessionContextProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [isSystemAdmin, setIsSystemAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -63,7 +67,9 @@ export function SessionContextProvider({ children }: { children: React.ReactNode
 export function useSessionContext() {
   const context = useContext(SessionContext)
   if (!context) {
-    throw new Error('useSessionContext must be used within a SessionContextProvider')
+    throw new Error(
+      'useSessionContext must be used within a SessionContextProvider'
+    )
   }
   return context
 }

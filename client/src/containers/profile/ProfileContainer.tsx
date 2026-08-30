@@ -11,16 +11,24 @@ export function ProfileContainer() {
   const { displayName: sessionName } = useSessionContext()
   const { updateProfile, saving } = useProfile()
   const [error, setError] = useState<string | null>(null)
-  const [sessionDisplayName, setSessionDisplayName] = useState<string | null>(null)
+  const [sessionDisplayName, setSessionDisplayName] = useState<string | null>(
+    null
+  )
 
   // Prefill once the session context resolves.
   useEffect(() => {
     if (sessionName !== null) setSessionDisplayName(sessionName)
   }, [sessionName])
 
-  const handleSave = async (name: string, avatarUrl?: string): Promise<boolean> => {
+  const handleSave = async (
+    name: string,
+    avatarUrl?: string
+  ): Promise<boolean> => {
     setError(null)
-    const { data, error: err } = await updateProfile(name || undefined, avatarUrl)
+    const { data, error: err } = await updateProfile(
+      name || undefined,
+      avatarUrl
+    )
     if (err) {
       setError(err)
       return false

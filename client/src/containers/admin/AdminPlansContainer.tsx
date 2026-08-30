@@ -18,7 +18,7 @@ export default function AdminPlansContainer() {
     loadMore,
     refresh,
   } = usePaginatedList<AdminPlanRow>({
-    fetcher: useCallback((params) => adminService.listPlans(params), []),
+    fetcher: useCallback(params => adminService.listPlans(params), []),
     enabled: isSystemAdmin,
     cursorField: 'id',
   })
@@ -43,7 +43,11 @@ export default function AdminPlansContainer() {
       })
       if (created.error) return created.error
       if (created.data && input.featureCode.trim()) {
-        const f = await adminService.setPlanFeature(created.data, input.featureCode.trim(), true)
+        const f = await adminService.setPlanFeature(
+          created.data,
+          input.featureCode.trim(),
+          true
+        )
         if (f.error) return f.error
       }
       await refresh()
@@ -64,9 +68,12 @@ export default function AdminPlansContainer() {
 
   if (!isSystemAdmin) {
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-        <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">
+        <Link
+          href="/"
+          className="mt-4 inline-block text-blue-600 hover:underline"
+        >
           Back to home
         </Link>
       </div>

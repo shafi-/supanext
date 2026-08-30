@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { subscriptionService, type CurrentSubscription } from '@/services/SubscriptionService'
+import {
+  subscriptionService,
+  type CurrentSubscription,
+} from '@/services/SubscriptionService'
 
 /**
  * Read-only billing view for users.

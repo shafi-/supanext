@@ -14,7 +14,10 @@ export function useProfile() {
       avatarUrl?: string
     ): Promise<ServiceData<UpdatedProfile>> => {
       setSaving(true)
-      const result = await profileService.updateMyProfile(displayName, avatarUrl)
+      const result = await profileService.updateMyProfile(
+        displayName,
+        avatarUrl
+      )
       setSaving(false)
       return result
     },

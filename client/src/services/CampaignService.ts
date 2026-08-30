@@ -57,7 +57,9 @@ export class CampaignService extends BaseRepository {
   }
 
   async deleteCampaign(campaignId: string): ServiceData<void> {
-    return this.callRpc<void>(Rpc.Campaign.Delete, { p_campaign_id: campaignId })
+    return this.callRpc<void>(Rpc.Campaign.Delete, {
+      p_campaign_id: campaignId,
+    })
   }
 }
 

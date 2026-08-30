@@ -6,11 +6,15 @@ interface LoadingProps {
   text?: string
 }
 
-export default function Loading({ className, size = 'md', text }: LoadingProps) {
+export default function Loading({
+  className,
+  size = 'md',
+  text,
+}: LoadingProps) {
   const sizeClasses = {
     sm: 'h-4 w-4 border-2',
     md: 'h-8 w-8 border-2',
-    lg: 'h-12 w-12 border-3'
+    lg: 'h-12 w-12 border-3',
   }
 
   return (
@@ -22,9 +26,7 @@ export default function Loading({ className, size = 'md', text }: LoadingProps) 
             sizeClasses[size]
           )}
         ></div>
-        {text && (
-          <p className="mt-4 text-sm text-gray-600">{text}</p>
-        )}
+        {text && <p className="mt-4 text-sm text-gray-600">{text}</p>}
       </div>
     </div>
   )
@@ -35,12 +37,15 @@ interface LoadingSkeletonProps {
   count?: number
 }
 
-export function LoadingSkeleton({ className, count = 1 }: LoadingSkeletonProps) {
+export function LoadingSkeleton({
+  className,
+  count = 1,
+}: LoadingSkeletonProps) {
   return (
     <div className={cn('space-y-3', className)}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 w-3/4 rounded bg-gray-200"></div>
         </div>
       ))}
     </div>
@@ -49,7 +54,7 @@ export function LoadingSkeleton({ className, count = 1 }: LoadingSkeletonProps) 
 
 export function FullPageLoading({ text = 'Loading...' }: { text?: string }) {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <Loading text={text} size="lg" />
     </div>
   )

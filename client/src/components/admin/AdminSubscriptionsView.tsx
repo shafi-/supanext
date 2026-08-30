@@ -53,33 +53,44 @@ export function AdminSubscriptionsView({
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">User Subscriptions</h1>
       {error && <p className="text-red-600">{error}</p>}
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg bg-white shadow">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assign Plan</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                User
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Assign Plan
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {users.map((user) => (
+            {users.map(user => (
               <tr key={user.id}>
-                <td className="px-4 py-3 whitespace-nowrap">
+                <td className="whitespace-nowrap px-4 py-3">
                   {user.email}
                   {user.display_name && (
-                    <span className="text-gray-400 ml-2">({user.display_name})</span>
+                    <span className="ml-2 text-gray-400">
+                      ({user.display_name})
+                    </span>
                   )}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap space-x-2">
+                <td className="space-x-2 whitespace-nowrap px-4 py-3">
                   {plans.length > 0 ? (
                     <>
                       <select
                         value={selected[user.id] ?? ''}
-                        onChange={(e) => setSelected({ ...selected, [user.id]: e.target.value })}
-                        className="border rounded px-2 py-1 text-sm"
+                        onChange={e =>
+                          setSelected({
+                            ...selected,
+                            [user.id]: e.target.value,
+                          })
+                        }
+                        className="rounded border px-2 py-1 text-sm"
                       >
                         <option value="">Select plan</option>
-                        {plans.map((p) => (
+                        {plans.map(p => (
                           <option key={p.id} value={p.id}>
                             {p.name}
                           </option>
@@ -89,7 +100,7 @@ export function AdminSubscriptionsView({
                         size="sm"
                         disabled={busy}
                         onClick={() => assign(user.id)}
-                        className="h-auto px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                        className="h-auto rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
                       >
                         Assign
                       </Button>
@@ -98,13 +109,15 @@ export function AdminSubscriptionsView({
                         size="sm"
                         disabled={busy}
                         onClick={() => deactivate(user.id)}
-                        className="h-auto px-2 py-1 border border-red-300 text-red-600 rounded text-xs hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        className="h-auto rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                       >
                         Deactivate
                       </Button>
                     </>
                   ) : (
-                    <span className="text-xs text-gray-400">No plans available</span>
+                    <span className="text-xs text-gray-400">
+                      No plans available
+                    </span>
                   )}
                 </td>
               </tr>
@@ -112,7 +125,10 @@ export function AdminSubscriptionsView({
           </tbody>
         </table>
       </div>
-      <Link href="/admin" className="text-blue-600 hover:underline inline-block">
+      <Link
+        href="/admin"
+        className="inline-block text-blue-600 hover:underline"
+      >
         ← Admin home
       </Link>
     </div>

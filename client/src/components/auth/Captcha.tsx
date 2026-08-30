@@ -19,7 +19,11 @@ declare global {
  * configured. Reports tokens via onToken(null) on expiry/error so the
  * form can block submission until a fresh token exists.
  */
-export function Captcha({ onToken }: { onToken: (token: string | null) => void }) {
+export function Captcha({
+  onToken,
+}: {
+  onToken: (token: string | null) => void
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
   const cbRef = useRef(onToken)
@@ -29,7 +33,12 @@ export function Captcha({ onToken }: { onToken: (token: string | null) => void }
     if (!TURNSTILE_SITE_KEY) return
 
     function renderWidget() {
-      if (!containerRef.current || widgetIdRef.current !== null || !window.turnstile) return
+      if (
+        !containerRef.current ||
+        widgetIdRef.current !== null ||
+        !window.turnstile
+      )
+        return
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: TURNSTILE_SITE_KEY,
         callback: (token: string) => cbRef.current(token),

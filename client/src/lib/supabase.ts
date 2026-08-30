@@ -106,7 +106,11 @@ export class SupabaseClientManager {
     return supabase.auth.signInWithPassword({ email, password })
   }
 
-  public async signUp(email: string, password: string, metadata?: Record<string, string>) {
+  public async signUp(
+    email: string,
+    password: string,
+    metadata?: Record<string, string>
+  ) {
     return supabase.auth.signUp({
       email,
       password,
@@ -136,7 +140,9 @@ export class SupabaseClientManager {
     params?: Record<string, unknown>
   ): Promise<{ data: T | null; error: string | null }> {
     try {
-      const { data, error } = await supabase.schema('api').rpc(functionName, params)
+      const { data, error } = await supabase
+        .schema('api')
+        .rpc(functionName, params)
 
       if (error) {
         console.error(`RPC error (${functionName}):`, error.message)
@@ -145,7 +151,8 @@ export class SupabaseClientManager {
 
       return { data: data as T, error: null }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error'
       console.error(`RPC catch error (${functionName}):`, errorMessage)
       return { data: null, error: errorMessage }
     }

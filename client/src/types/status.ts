@@ -10,7 +10,8 @@ export const SubscriptionStatus = {
   Expired: 'expired',
 } as const
 
-export type SubscriptionStatus = (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus]
+export type SubscriptionStatus =
+  (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus]
 
 export const InvitationStatus = {
   Pending: 'pending',
@@ -19,4 +20,5 @@ export const InvitationStatus = {
   Expired: 'expired',
 } as const
 
-export type InvitationStatus = (typeof InvitationStatus)[keyof typeof InvitationStatus]
+export type InvitationStatus =
+  (typeof InvitationStatus)[keyof typeof InvitationStatus]

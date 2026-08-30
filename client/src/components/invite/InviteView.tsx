@@ -1,4 +1,5 @@
-export type InviteStatus = 'loading' | 'valid' | 'invalid' | 'expired' | 'accepted' | 'error'
+export type InviteStatus =
+  'loading' | 'valid' | 'invalid' | 'expired' | 'accepted' | 'error'
 
 interface InviteViewProps {
   token: string | null
@@ -21,27 +22,37 @@ export function InviteView({
   onAccept,
 }: InviteViewProps) {
   return (
-    <div className="max-w-md mx-auto text-center space-y-4">
-      {status === 'loading' && <div className="text-gray-600">Validating invite...</div>}
+    <div className="mx-auto max-w-md space-y-4 text-center">
+      {status === 'loading' && (
+        <div className="text-gray-600">Validating invite...</div>
+      )}
       {status === 'invalid' && (
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-red-600">Invalid Invite</h1>
           <p className="text-gray-600">This invite link is invalid.</p>
-          <Link href="/" className="text-blue-600 hover:underline">Go home</Link>
+          <Link href="/" className="text-blue-600 hover:underline">
+            Go home
+          </Link>
         </div>
       )}
       {status === 'expired' && (
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-orange-600">Invite Expired</h1>
-          <p className="text-gray-600">This invite link has expired or was already used.</p>
-          <Link href="/" className="text-blue-600 hover:underline">Go home</Link>
+          <p className="text-gray-600">
+            This invite link has expired or was already used.
+          </p>
+          <Link href="/" className="text-blue-600 hover:underline">
+            Go home
+          </Link>
         </div>
       )}
       {status === 'error' && (
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-red-600">Error</h1>
           <p className="text-gray-600">{errorMsg || 'Something went wrong.'}</p>
-          <Link href="/" className="text-blue-600 hover:underline">Go home</Link>
+          <Link href="/" className="text-blue-600 hover:underline">
+            Go home
+          </Link>
         </div>
       )}
       {status === 'accepted' && (
@@ -54,11 +65,16 @@ export function InviteView({
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">You&apos;ve been invited!</h1>
           <p className="text-gray-600">
-            {inviterName ? <>{inviterName} invited you to join</> : <>You&apos;ve been invited to join</>} the platform.
+            {inviterName ? (
+              <>{inviterName} invited you to join</>
+            ) : (
+              <>You&apos;ve been invited to join</>
+            )}{' '}
+            the platform.
           </p>
           <Link
             href={`/auth/login?next=${encodeURIComponent(`/invite?token=${token}`)}`}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md inline-block hover:bg-blue-700"
+            className="inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Sign in
           </Link>
@@ -77,7 +93,10 @@ export function InviteView({
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Join the Platform</h1>
           <p className="text-gray-600">Click below to accept the invitation.</p>
-          <Button onClick={onAccept} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+          <Button
+            onClick={onAccept}
+            className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
             Accept Invitation
           </Button>
         </div>
